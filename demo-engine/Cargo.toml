@@ -1,0 +1,11 @@
+[package]
+name = "demo-engine"
+version = "0.1.0"
+edition = "2024"
+description = "Demo IBus engine for libibus-rs"
+publish = false
+
+[dependencies]
+libibus-rs = { path = "../libibus-rs" }
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"

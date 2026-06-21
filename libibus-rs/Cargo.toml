@@ -1,0 +1,22 @@
+[package]
+name = "libibus-rs"
+version = "0.1.0"
+edition = "2024"
+description = "A pure Rust client library for IBus (Intelligent Input Bus)"
+license = "MIT"
+authors = ["Yoshihiro OKUMURA <orrisroot@gmail.com>"]
+repository = "https://github.com/orrisroot/libibus-rs"
+keywords = ["ibus", "input-method", "ime", "dbus"]
+categories = ["api-bindings"]
+
+[dependencies]
+zbus = { version = "5", features = ["tokio"] }
+zvariant = "5"
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+thiserror = "2"
+quick-xml = "0.40"
+log = "0.4"
+futures-util = "0.3"
+async-trait = "0.1"
+bitflags = "2"

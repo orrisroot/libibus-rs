@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "libibus-rs",
+    "demo-engine",
+]
+resolver = "2"
