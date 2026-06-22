@@ -6,9 +6,9 @@ use crate::prop::{Prop, PropList};
 
 /// Handle for emitting IBus engine signals.
 ///
-/// The daemon gives you an `EngineHandle` via
-/// [`EngineImpl::set_handle`](crate::engine::EngineImpl::set_handle) after
-/// the engine's D-Bus object is registered.  Use it to notify the IBus panel
+/// The library provides an `EngineHandle` as a borrowed parameter in all
+/// [`EngineImpl`](crate::engine::EngineImpl) callback methods once the engine's
+/// D-Bus object is registered.  Use it to notify the IBus panel
 /// of state changes:
 ///
 /// | Method | Effect |
@@ -26,7 +26,11 @@ pub struct EngineHandle {
 }
 
 impl EngineHandle {
-    pub(crate) fn new(signal_ctxt: SignalEmitter<'static>) -> Self {
+    /// Create a new `EngineHandle` wrapping a `SignalEmitter`.
+    ///
+    /// # Note
+    /// This constructor is primarily public to allow unit testing custom engines.
+    pub fn new(signal_ctxt: SignalEmitter<'static>) -> Self {
         Self { signal_ctxt }
     }
 

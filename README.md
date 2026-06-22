@@ -58,25 +58,27 @@ libibus-rs = { git = "https://github.com/orrisroot/libibus-rs" }
 tokio = { version = "1", features = ["full"] }
 ```
 
+For a comprehensive guide on the API design in v1.0.0, please refer to the [API Reference](docs/API_REFERENCE.md).
+
 ### Minimal engine
 
 ```rust
-use libibus_rs::{EngineImpl, KeyEvent, Bus, Component, EngineDesc, FactoryImpl};
+use libibus_rs::{EngineImpl, EngineHandle, KeyEvent, Bus, Component, EngineDesc, FactoryImpl};
 
 struct MyEngine;
 
 #[async_trait::async_trait]
 impl EngineImpl for MyEngine {
-    async fn process_key_event(&mut self, event: &KeyEvent) -> bool {
+    async fn process_key_event(&mut self, event: &KeyEvent, handle: &EngineHandle) -> bool {
         // Handle key event, return true if handled
         false
     }
 
-    async fn focus_in(&mut self) {
+    async fn focus_in(&mut self, handle: &EngineHandle) {
         // Input context gained focus
     }
 
-    async fn focus_out(&mut self) {
+    async fn focus_out(&mut self, handle: &EngineHandle) {
         // Input context lost focus
     }
 }
@@ -99,7 +101,7 @@ async fn main() -> libibus_rs::Result<()> {
     let mut component = Component::new(
         "my-engine",
         "My IME",
-        "0.1.0",
+        "1.0.0",
         "MIT",
         "Author",
         "https://example.com",
@@ -115,8 +117,8 @@ async fn main() -> libibus_rs::Result<()> {
     component.add_engine(engine_desc);
 
     // Register factory on the bus connection
-    let conn = bus.connection()?;
-    libibus_rs::factory::register(conn, Box::new(MyFactory)).await?;
+    let conn = bus.connection()?.clone();
+    libibus_rs::factory::register(&conn, Box::new(MyFactory)).await?;
 
     bus.register_component(&component).await?;
 

@@ -404,34 +404,47 @@ async fn test_engine_trait_defaults() {
 
     #[async_trait::async_trait]
     impl EngineImpl for NoOpEngine {
-        async fn process_key_event(&mut self, _event: &KeyEvent) -> bool {
+        async fn process_key_event(&mut self, _event: &KeyEvent, _handle: &libibus_rs::EngineHandle) -> bool {
             false
         }
         // All other methods use default implementations
     }
 
+    let mut bus = libibus_rs::Bus::new();
+    if !has_ibus_daemon() {
+        eprintln!("skipping: no ibus-daemon found");
+        return;
+    }
+    bus.connect().await.expect("connect to ibus-daemon");
+    let connection = bus.connection().unwrap();
+    let path = zvariant::ObjectPath::try_from("/org/freedesktop/IBus/Engine/Test").unwrap();
+    let signal_ctxt = zbus::object_server::SignalEmitter::new(connection, path).unwrap();
+    let handle = libibus_rs::EngineHandle::new(signal_ctxt.into_owned());
+
     let mut engine = NoOpEngine;
 
     // All default methods should not panic
-    assert!(!engine.process_key_event(&KeyEvent::new(0x0061, 0, 0)).await);
-    engine.focus_in().await;
-    engine.focus_out().await;
-    engine.reset().await;
-    engine.enable().await;
-    engine.disable().await;
-    engine.set_cursor_location(0, 0, 100, 20).await;
-    engine.set_content_type(0, 0).await;
-    engine.set_surrounding_text("test", 4, 4).await;
-    engine.set_engine_name("test").await;
-    engine.page_up().await;
-    engine.page_down().await;
-    engine.cursor_up().await;
-    engine.cursor_down().await;
-    engine.candidate_clicked(0, 1, 0).await;
-    engine.property_activate("mode", 1).await;
-    engine.property_show("mode").await;
-    engine.property_hide("mode").await;
-    engine.destroy().await;
+    assert!(!engine.process_key_event(&KeyEvent::new(0x0061, 0, 0), &handle).await);
+    engine.focus_in(&handle).await;
+    engine.focus_out(&handle).await;
+    engine.reset(&handle).await;
+    engine.enable(&handle).await;
+    engine.disable(&handle).await;
+    engine.set_cursor_location(0, 0, 100, 20, &handle).await;
+    engine.set_content_type(0, 0, &handle).await;
+    engine.set_surrounding_text("test", 4, 4, &handle).await;
+    engine.set_engine_name("test", &handle).await;
+    engine.page_up(&handle).await;
+    engine.page_down(&handle).await;
+    engine.cursor_up(&handle).await;
+    engine.cursor_down(&handle).await;
+    engine.candidate_clicked(0, 1, 0, &handle).await;
+    engine.property_activate("mode", 1, &handle).await;
+    engine.property_show("mode", &handle).await;
+    engine.property_hide("mode", &handle).await;
+    engine.destroy(&handle).await;
+
+    bus.disconnect().await;
 }
 
 // ==================== EngineHandle test ====================
@@ -569,7 +582,7 @@ async fn test_factory_trait_defaults() {
             struct Empty;
             #[async_trait::async_trait]
             impl EngineImpl for Empty {
-                async fn process_key_event(&mut self, _event: &KeyEvent) -> bool {
+                async fn process_key_event(&mut self, _event: &KeyEvent, _handle: &libibus_rs::EngineHandle) -> bool {
                     false
                 }
             }

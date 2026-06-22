@@ -199,11 +199,13 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "demo-engine"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "async-trait",
  "libibus-rs",
  "tokio",
+ "zbus",
+ "zvariant",
 ]
 
 [[package]]
@@ -389,7 +391,7 @@ checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 
 [[package]]
 name = "libibus-rs"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "async-trait",
  "bitflags",

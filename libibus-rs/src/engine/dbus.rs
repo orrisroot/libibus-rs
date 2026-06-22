@@ -15,31 +15,31 @@ impl Engine {
     ) -> zbus::fdo::Result<bool> {
         let event = KeyEvent::new(keyval, keycode, state);
         let mut inner = self.inner.lock().await;
-        Ok(inner.process_key_event(&event).await)
+        Ok(inner.process_key_event(&event, &self.handle).await)
     }
 
     async fn focus_in(&mut self) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.focus_in().await;
+        self.inner.lock().await.focus_in(&self.handle).await;
         Ok(())
     }
 
     async fn focus_out(&mut self) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.focus_out().await;
+        self.inner.lock().await.focus_out(&self.handle).await;
         Ok(())
     }
 
     async fn reset(&mut self) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.reset().await;
+        self.inner.lock().await.reset(&self.handle).await;
         Ok(())
     }
 
     async fn enable(&mut self) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.enable().await;
+        self.inner.lock().await.enable(&self.handle).await;
         Ok(())
     }
 
     async fn disable(&mut self) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.disable().await;
+        self.inner.lock().await.disable(&self.handle).await;
         Ok(())
     }
 
@@ -53,7 +53,7 @@ impl Engine {
         self.inner
             .lock()
             .await
-            .set_cursor_location(x, y, w, h)
+            .set_cursor_location(x, y, w, h, &self.handle)
             .await;
         Ok(())
     }
@@ -62,7 +62,7 @@ impl Engine {
         self.inner
             .lock()
             .await
-            .set_content_type(hints, purpose)
+            .set_content_type(hints, purpose, &self.handle)
             .await;
         Ok(())
     }
@@ -76,33 +76,33 @@ impl Engine {
         self.inner
             .lock()
             .await
-            .set_surrounding_text(&text, cursor_pos, anchor_pos)
+            .set_surrounding_text(&text, cursor_pos, anchor_pos, &self.handle)
             .await;
         Ok(())
     }
 
     async fn set_engine_name(&mut self, name: String) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.set_engine_name(&name).await;
+        self.inner.lock().await.set_engine_name(&name, &self.handle).await;
         Ok(())
     }
 
     async fn page_up(&mut self) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.page_up().await;
+        self.inner.lock().await.page_up(&self.handle).await;
         Ok(())
     }
 
     async fn page_down(&mut self) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.page_down().await;
+        self.inner.lock().await.page_down(&self.handle).await;
         Ok(())
     }
 
     async fn cursor_up(&mut self) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.cursor_up().await;
+        self.inner.lock().await.cursor_up(&self.handle).await;
         Ok(())
     }
 
     async fn cursor_down(&mut self) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.cursor_down().await;
+        self.inner.lock().await.cursor_down(&self.handle).await;
         Ok(())
     }
 
@@ -115,7 +115,7 @@ impl Engine {
         self.inner
             .lock()
             .await
-            .candidate_clicked(index, button, state)
+            .candidate_clicked(index, button, state, &self.handle)
             .await;
         Ok(())
     }
@@ -128,23 +128,23 @@ impl Engine {
         self.inner
             .lock()
             .await
-            .property_activate(&prop_name, prop_state)
+            .property_activate(&prop_name, prop_state, &self.handle)
             .await;
         Ok(())
     }
 
     async fn property_show(&mut self, prop_name: String) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.property_show(&prop_name).await;
+        self.inner.lock().await.property_show(&prop_name, &self.handle).await;
         Ok(())
     }
 
     async fn property_hide(&mut self, prop_name: String) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.property_hide(&prop_name).await;
+        self.inner.lock().await.property_hide(&prop_name, &self.handle).await;
         Ok(())
     }
 
     async fn destroy(&mut self) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.destroy().await;
+        self.inner.lock().await.destroy(&self.handle).await;
         Ok(())
     }
 

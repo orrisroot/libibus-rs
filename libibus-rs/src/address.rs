@@ -99,11 +99,37 @@ fn parse_address(contents: &str) -> Result<Address> {
         ));
     }
 
+    validate_host(&host)?;
+    validate_socket_path(&socket_path)?;
+
     Ok(Address {
         host,
         port,
         socket_path,
     })
+}
+
+fn validate_host(host: &str) -> Result<()> {
+    if host.is_empty() {
+        return Ok(());
+    }
+    // Allow only safe characters: alphanumeric, '.', '-', ':', '[', ']'
+    if host.chars().all(|c| c.is_alphanumeric() || c == '.' || c == '-' || c == ':' || c == '[' || c == ']') {
+        Ok(())
+    } else {
+        Err(Error::Address(format!("Invalid characters in host: {}", host)))
+    }
+}
+
+fn validate_socket_path(path: &str) -> Result<()> {
+    if path.is_empty() {
+        return Ok(());
+    }
+    // Reject commas as they are used as option delimiters in D-Bus addresses
+    if path.contains(',') {
+        return Err(Error::Address("Socket path contains invalid character ','".into()));
+    }
+    Ok(())
 }
 
 pub fn connect_address() -> Result<String> {
@@ -116,5 +142,40 @@ pub fn connect_address() -> Result<String> {
         }
     } else {
         Ok(format!("tcp:host={},port={}", addr.host, addr.port))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_address_valid_unix() {
+        let content = "--address=unix:path=/tmp/ibus-socket\n";
+        let addr = parse_address(content).unwrap();
+        assert_eq!(addr.socket_path, "/tmp/ibus-socket");
+        assert!(addr.host.is_empty());
+        assert_eq!(addr.port, 0);
+    }
+
+    #[test]
+    fn test_parse_address_valid_tcp() {
+        let content = "--host=127.0.0.1\n--port=1234\n";
+        let addr = parse_address(content).unwrap();
+        assert_eq!(addr.host, "127.0.0.1");
+        assert_eq!(addr.port, 1234);
+        assert!(addr.socket_path.is_empty());
+    }
+
+    #[test]
+    fn test_parse_address_invalid_host() {
+        let content = "--host=127.0.0.1,param=value\n--port=1234\n";
+        assert!(parse_address(content).is_err());
+    }
+
+    #[test]
+    fn test_parse_address_invalid_socket_path() {
+        let content = "--address=unix:path=/tmp/socket,param=value\n";
+        assert!(parse_address(content).is_err());
     }
 }

@@ -163,7 +163,7 @@ pub struct InputContext {
     proxy: InputContextProxy<'static>,
 }
 
-/// A handle returned by [`InputContext::connect_*`] methods.
+/// A handle returned by connection subscription methods (e.g., `connect_commit_text`).
 ///
 /// When dropped, the associated signal handler task is cancelled.
 /// Keep this handle alive for as long as you want to receive the signal.

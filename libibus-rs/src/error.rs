@@ -42,5 +42,5 @@ pub enum Error {
     Io(#[from] std::io::Error),
 }
 
-/// Convenience alias for [`Result<T, libibus_rs::Error>`](Error).
+/// Convenience alias for [`Result<T, libibus_rs::Error>`](enum@Error).
 pub type Result<T> = std::result::Result<T, Error>;

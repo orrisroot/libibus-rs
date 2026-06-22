@@ -56,7 +56,7 @@ impl Bus {
         self.connection.as_ref().ok_or(Error::NotConnected)
     }
 
-    /// Access a clone of the [`IBusProxy`].
+    /// Access a clone of the underlying D-Bus proxy.
     ///
     /// Returns [`Error::NotConnected`] if [`connect`](Self::connect) has not been called.
     pub fn bus_proxy(&self) -> Result<IBusProxy<'static>> {

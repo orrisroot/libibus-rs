@@ -57,21 +57,21 @@ impl From<u32> for LookupOrientation {
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct LookupTable {
     /// List of candidate strings.
-    pub candidates: Vec<Text>,
+    candidates: Vec<Text>,
     /// Labels shown beside each candidate (may be empty to use 1-based indices).
-    pub labels: Vec<Text>,
+    labels: Vec<Text>,
     /// Absolute cursor position in the full candidate list.
-    pub cursor_pos: u32,
+    cursor_pos: u32,
     /// Whether the cursor highlight is visible.
-    pub cursor_visible: bool,
+    cursor_visible: bool,
     /// Whether to wrap around at the start/end of the list.
-    pub round: bool,
+    round: bool,
     /// Layout orientation (see `ORIENTATION_*` constants).
-    pub orientation: u32,
+    orientation: u32,
     /// Number of candidates per page.
-    pub page_size: u32,
+    page_size: u32,
     /// Cursor position within the current page.
-    pub cursor_pos_in_page: u32,
+    cursor_pos_in_page: u32,
 }
 
 impl Default for LookupTable {
@@ -114,17 +114,57 @@ impl LookupTable {
     /// Replace all candidates.
     pub fn set_candidates(&mut self, candidates: Vec<Text>) {
         self.candidates = candidates;
+        if self.cursor_pos >= self.candidates.len() as u32 {
+            self.cursor_pos = 0;
+        }
+        self.update_cursor_in_page();
     }
 
     /// Set the absolute cursor position and update the page-relative position.
     pub fn set_cursor_pos(&mut self, pos: u32) {
-        self.cursor_pos = pos;
+        if pos < self.candidates.len() as u32 {
+            self.cursor_pos = pos;
+        } else if !self.candidates.is_empty() {
+            self.cursor_pos = self.candidates.len() as u32 - 1;
+        } else {
+            self.cursor_pos = 0;
+        }
         self.update_cursor_in_page();
     }
 
     /// Return the absolute cursor position.
     pub fn cursor_pos(&self) -> u32 {
         self.cursor_pos
+    }
+
+    /// Return a reference to all candidates.
+    pub fn candidates(&self) -> &[Text] {
+        &self.candidates
+    }
+
+    /// Return a reference to all labels.
+    pub fn labels(&self) -> &[Text] {
+        &self.labels
+    }
+
+    /// Return whether the cursor highlight is visible.
+    pub fn cursor_visible(&self) -> bool {
+        self.cursor_visible
+    }
+
+    /// Return whether wrapping at list boundaries is enabled.
+    pub fn round(&self) -> bool {
+        self.round
+    }
+
+    /// Return the orientation of the lookup table.
+    pub fn orientation(&self) -> LookupOrientation {
+        LookupOrientation::from_u32(self.orientation).unwrap_or(LookupOrientation::Vertical)
+    }
+
+    /// Return the cursor position within the current page.
+    pub fn cursor_pos_in_page(&self) -> u32 {
+        self.cursor_pos_in_page
     }
 
     fn update_cursor_in_page(&mut self) {

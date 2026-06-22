@@ -26,7 +26,6 @@ use libibus_rs::ModifierType;
 /// - "mode" toggle — demonstrates property activation handling.
 pub struct DemoEngine {
     pub preedit: String,
-    handle: Option<EngineHandle>,
     pub aux_visible: bool,
     pub mode_checked: bool,
 }
@@ -35,7 +34,6 @@ impl DemoEngine {
     pub fn new() -> Self {
         Self {
             preedit: String::new(),
-            handle: None,
             aux_visible: false,
             mode_checked: false,
         }
@@ -55,15 +53,10 @@ pub fn should_ignore_key(event: &KeyEvent) -> bool {
 
 #[async_trait::async_trait]
 impl EngineImpl for DemoEngine {
-    async fn process_key_event(&mut self, event: &KeyEvent) -> bool {
+    async fn process_key_event(&mut self, event: &KeyEvent, handle: &EngineHandle) -> bool {
         if should_ignore_key(event) {
             return false;
         }
-
-        let handle = match &self.handle {
-            Some(h) => h,
-            None => return false,
-        };
 
         match event.keyval {
             keysym::Return | keysym::KP_Enter => {
@@ -168,108 +161,91 @@ impl EngineImpl for DemoEngine {
         }
     }
 
-    async fn focus_in(&mut self) {
-        if let Some(handle) = &self.handle {
-            let _ = handle.show_preedit_text().await;
+    async fn focus_in(&mut self, handle: &EngineHandle) {
+        let _ = handle.show_preedit_text().await;
 
-            // Register properties on focus
-            let mut props = PropList::new();
-            let mut mode_prop = Prop::toggle("mode", "変換");
-            mode_prop.set_tooltip("変換モードを切り替え");
-            mode_prop.set_icon("ibus-mode-indicator");
-            mode_prop.set_state(if self.mode_checked {
-                PropState::Checked
-            } else {
-                PropState::Unchecked
-            });
-            props.append(mode_prop);
+        // Register properties on focus
+        let mut props = PropList::new();
+        let mut mode_prop = Prop::toggle("mode", "変換");
+        mode_prop.set_tooltip("変換モードを切り替え");
+        mode_prop.set_icon("ibus-mode-indicator");
+        mode_prop.set_state(if self.mode_checked {
+            PropState::Checked
+        } else {
+            PropState::Unchecked
+        });
+        props.append(mode_prop);
 
-            let separator = Prop::separator();
-            props.append(separator);
+        let separator = Prop::separator();
+        props.append(separator);
 
-            let mut info_prop = Prop::new("info", "ℹ️");
-            info_prop.set_tooltip("libibus-rs demo engine");
-            props.append(info_prop);
+        let mut info_prop = Prop::new("info", "ℹ️");
+        info_prop.set_tooltip("libibus-rs demo engine");
+        props.append(info_prop);
 
-            let _ = handle.register_properties(props).await;
-        }
+        let _ = handle.register_properties(props).await;
     }
 
-    async fn focus_out(&mut self) {
-        if let Some(handle) = &self.handle {
-            let _ = handle.hide_preedit_text().await;
-            let _ = handle.hide_lookup_table().await;
-            let _ = handle.hide_auxiliary_text().await;
-        }
+    async fn focus_out(&mut self, handle: &EngineHandle) {
+        let _ = handle.hide_preedit_text().await;
+        let _ = handle.hide_lookup_table().await;
+        let _ = handle.hide_auxiliary_text().await;
     }
 
-    async fn reset(&mut self) {
+    async fn reset(&mut self, handle: &EngineHandle) {
         self.preedit.clear();
-        if let Some(handle) = &self.handle {
-            let _ = handle.hide_preedit_text().await;
-            let _ = handle.hide_lookup_table().await;
-        }
-    }
-
-    async fn set_handle(&mut self, handle: EngineHandle) {
-        self.handle = Some(handle);
+        let _ = handle.hide_preedit_text().await;
+        let _ = handle.hide_lookup_table().await;
     }
 
     /// Handle property activation from the panel.
-    async fn property_activate(&mut self, prop_name: &str, prop_state: u32) {
+    async fn property_activate(&mut self, prop_name: &str, prop_state: u32, handle: &EngineHandle) {
         match prop_name {
             "mode" => {
                 self.mode_checked = prop_state == PropState::Checked as u32;
-                if let Some(handle) = &self.handle {
-                    let mut prop = Prop::toggle("mode", "変換");
-                    prop.set_state(prop_state.into());
-                    let _ = handle.update_property(prop).await;
-                }
+                let mut prop = Prop::toggle("mode", "変換");
+                prop.set_state(prop_state.into());
+                let _ = handle.update_property(prop).await;
             }
             "info" => {
                 // Show auxiliary text as a response to info button
-                if let Some(handle) = &self.handle {
-                    self.aux_visible = true;
-                    let _ = handle
-                        .update_auxiliary_text(
-                            "libibus-rs demo — https://github.com/orrisroot/libibus-rs",
-                            true,
-                        )
-                        .await;
-                }
+                self.aux_visible = true;
+                let _ = handle
+                    .update_auxiliary_text(
+                        "libibus-rs demo — https://github.com/orrisroot/libibus-rs",
+                        true,
+                    )
+                    .await;
             }
             _ => {}
         }
     }
 
     /// Handle candidate clicked from the panel.
-    async fn candidate_clicked(&mut self, index: u32, _button: u32, _state: u32) {
-        if let Some(handle) = &self.handle {
-            let candidate = format!("候補{}", index + 1);
-            let _ = handle.commit_text(&candidate).await;
-            let _ = handle.hide_lookup_table().await;
-            let _ = handle.hide_preedit_text().await;
-            self.preedit.clear();
-        }
+    async fn candidate_clicked(&mut self, index: u32, _button: u32, _state: u32, handle: &EngineHandle) {
+        let candidate = format!("候補{}", index + 1);
+        let _ = handle.commit_text(&candidate).await;
+        let _ = handle.hide_lookup_table().await;
+        let _ = handle.hide_preedit_text().await;
+        self.preedit.clear();
     }
 
     /// Handle lookup table navigation from the panel.
-    async fn page_up(&mut self) {
+    async fn page_up(&mut self, _handle: &EngineHandle) {
         // In a real engine, update the lookup table's cursor position
     }
 
-    async fn page_down(&mut self) {
+    async fn page_down(&mut self, _handle: &EngineHandle) {
         // In a real engine, update the lookup table's cursor position
     }
 
-    async fn cursor_up(&mut self) {}
+    async fn cursor_up(&mut self, _handle: &EngineHandle) {}
 
-    async fn cursor_down(&mut self) {}
+    async fn cursor_down(&mut self, _handle: &EngineHandle) {}
 
     /// Handle engine destruction.
-    async fn destroy(&mut self) {
+    async fn destroy(&mut self, _handle: &EngineHandle) {
         self.preedit.clear();
-        self.handle = None;
     }
 }
 
@@ -282,7 +258,6 @@ impl FactoryImpl for DemoFactory {
         println!("Factory asked to create engine: {}", engine_name);
         Ok(Box::new(DemoEngine {
             preedit: String::new(),
-            handle: None,
             aux_visible: false,
             mode_checked: false,
         }))
@@ -381,6 +356,16 @@ mod tests {
         assert!(should_ignore_key(&ev));
     }
 
+    async fn create_test_handle() -> Option<EngineHandle> {
+        if let Ok(conn) = zbus::Connection::session().await {
+            let path = zvariant::ObjectPath::try_from("/org/freedesktop/IBus/Engine/Test").unwrap();
+            if let Ok(emitter) = zbus::object_server::SignalEmitter::new(&conn, path) {
+                return Some(EngineHandle::new(emitter.into_owned()));
+            }
+        }
+        None
+    }
+
     // ==================== DemoEngine state tests ====================
 
     #[test]
@@ -392,63 +377,79 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_process_key_without_handle_returns_false() {
+    async fn test_process_key_plain_returns_true() {
+        let Some(handle) = create_test_handle().await else {
+            return;
+        };
         let mut engine = DemoEngine::new();
-        // No handle set — all key events should return false
         let ev = KeyEvent::new(keysym::a, 0, 0);
-        assert!(!engine.process_key_event(&ev).await);
-        assert!(engine.preedit.is_empty());
+        assert!(engine.process_key_event(&ev, &handle).await);
+        assert_eq!(engine.preedit, "あ");
     }
 
     #[tokio::test]
-    async fn test_process_key_ignore_release_without_handle() {
+    async fn test_process_key_ignore_release() {
+        let Some(handle) = create_test_handle().await else {
+            return;
+        };
         let mut engine = DemoEngine::new();
         let ev = KeyEvent::new(keysym::a, 0, ModifierType::RELEASE.bits());
-        assert!(!engine.process_key_event(&ev).await);
+        assert!(!engine.process_key_event(&ev, &handle).await);
     }
 
     #[tokio::test]
-    async fn test_process_key_ignore_ctrl_without_handle() {
+    async fn test_process_key_ignore_ctrl() {
+        let Some(handle) = create_test_handle().await else {
+            return;
+        };
         let mut engine = DemoEngine::new();
         let ev = KeyEvent::new(keysym::c, 0, ModifierType::CONTROL.bits());
-        assert!(!engine.process_key_event(&ev).await);
+        assert!(!engine.process_key_event(&ev, &handle).await);
     }
 
     // ==================== Property activation state tests ====================
 
     #[tokio::test]
     async fn test_property_activate_mode_toggle() {
+        let Some(handle) = create_test_handle().await else {
+            return;
+        };
         let mut engine = DemoEngine::new();
         assert!(!engine.mode_checked);
 
         engine
-            .property_activate("mode", PropState::Checked as u32)
+            .property_activate("mode", PropState::Checked as u32, &handle)
             .await;
         assert!(engine.mode_checked);
 
         engine
-            .property_activate("mode", PropState::Unchecked as u32)
+            .property_activate("mode", PropState::Unchecked as u32, &handle)
             .await;
         assert!(!engine.mode_checked);
     }
 
     #[tokio::test]
     async fn test_property_activate_info_shows_aux() {
+        let Some(handle) = create_test_handle().await else {
+            return;
+        };
         let mut engine = DemoEngine::new();
         assert!(!engine.aux_visible);
 
-        // Without handle, aux_visible is only set inside `if let Some(handle)`
-        engine.property_activate("info", 0).await;
-        assert!(!engine.aux_visible);
+        engine.property_activate("info", 0, &handle).await;
+        assert!(engine.aux_visible);
     }
 
     #[tokio::test]
     async fn test_property_activate_unknown_ignored() {
+        let Some(handle) = create_test_handle().await else {
+            return;
+        };
         let mut engine = DemoEngine::new();
         let initial_mode = engine.mode_checked;
         let initial_aux = engine.aux_visible;
 
-        engine.property_activate("unknown_prop", 0).await;
+        engine.property_activate("unknown_prop", 0, &handle).await;
         assert_eq!(engine.mode_checked, initial_mode);
         assert_eq!(engine.aux_visible, initial_aux);
     }
@@ -457,36 +458,29 @@ mod tests {
 
     #[tokio::test]
     async fn test_candidate_clicked_clears_preedit() {
+        let Some(handle) = create_test_handle().await else {
+            return;
+        };
         let mut engine = DemoEngine::new();
         engine.preedit = "あいう".to_string();
 
-        // Without handle, candidate_clicked only clears preedit inside the
-        // `if let Some(handle)` block — so preedit remains unchanged.
-        engine.candidate_clicked(0, 1, 0).await;
-        assert_eq!(engine.preedit, "あいう");
-    }
-
-    #[tokio::test]
-    async fn test_candidate_clicked_no_handle_no_panic() {
-        let mut engine = DemoEngine::new();
-        engine.preedit = "test".to_string();
-
-        // Should not panic even without handle
-        engine.candidate_clicked(5, 1, 0).await;
-        // preedit is only cleared when handle is Some, so it should remain
-        assert_eq!(engine.preedit, "test");
+        engine.candidate_clicked(0, 1, 0, &handle).await;
+        assert_eq!(engine.preedit, "");
     }
 
     // ==================== Destroy state tests ====================
 
     #[tokio::test]
     async fn test_destroy_clears_state() {
+        let Some(handle) = create_test_handle().await else {
+            return;
+        };
         let mut engine = DemoEngine::new();
         engine.preedit = "あいう".to_string();
         engine.aux_visible = true;
         engine.mode_checked = true;
 
-        engine.destroy().await;
+        engine.destroy(&handle).await;
         assert!(engine.preedit.is_empty());
     }
 
@@ -494,10 +488,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_reset_clears_preedit() {
+        let Some(handle) = create_test_handle().await else {
+            return;
+        };
         let mut engine = DemoEngine::new();
         engine.preedit = "テスト".to_string();
 
-        engine.reset().await;
+        engine.reset(&handle).await;
         assert!(engine.preedit.is_empty());
     }
 

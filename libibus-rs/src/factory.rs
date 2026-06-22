@@ -97,17 +97,12 @@ impl Factory {
         let object_path = OwnedObjectPath::try_from(object_path_str.as_str())
             .map_err(|e| zbus::fdo::Error::Failed(format!("Invalid object path: {}", e)))?;
 
-        let engine = Engine::new(engine_impl);
-
         let signal_ctxt = SignalEmitter::new(&self.conn, object_path.clone()).map_err(|e| {
             zbus::fdo::Error::Failed(format!("Failed to create signal context: {}", e))
         })?;
         let handle = EngineHandle::new(signal_ctxt.into_owned());
-        {
-            let shared = engine.shared_inner();
-            let mut inner = shared.lock().await;
-            inner.set_handle(handle).await;
-        }
+
+        let engine = Engine::new(engine_impl, handle);
 
         let is_new = self
             .conn
