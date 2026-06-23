@@ -175,6 +175,21 @@ fn validate_socket_path(path: &str) -> Result<()> {
 }
 
 pub fn connect_address() -> Result<String> {
+    if let Ok(env_addr) = std::env::var("IBUS_ADDRESS") {
+        if !env_addr.is_empty() {
+            // Parse IBUS_ADDRESS directly (format: "unix:path=/path,guid=...")
+            if let Some(socket_path) = parse_unix_socket_path(&env_addr) {
+                if socket_path.starts_with('@') {
+                    return Ok(format!("unix:abstract={}", &socket_path[1..]));
+                } else {
+                    return Ok(format!("unix:path={}", socket_path));
+                }
+            }
+            // If it's not a unix socket, return as-is
+            return Ok(env_addr);
+        }
+    }
+
     let addr = read_ibus_address(None)?;
     if !addr.socket_path.is_empty() {
         if addr.socket_path.starts_with('@') {
@@ -247,5 +262,20 @@ mod tests {
     fn test_parse_address_invalid_socket_path() {
         let content = "--address=unix:guid=abcdef\n";
         assert!(parse_address(content).is_err());
+    }
+
+    #[test]
+    fn test_connect_address_from_env() {
+        unsafe {
+            std::env::set_var(
+                "IBUS_ADDRESS",
+                "unix:path=/tmp/test-ibus-socket,guid=abc123",
+            );
+        }
+        let result = connect_address().unwrap();
+        assert_eq!(result, "unix:path=/tmp/test-ibus-socket");
+        unsafe {
+            std::env::remove_var("IBUS_ADDRESS");
+        }
     }
 }
