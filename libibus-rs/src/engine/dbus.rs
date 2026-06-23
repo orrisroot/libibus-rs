@@ -2,8 +2,6 @@ use zbus::{interface, object_server::SignalEmitter};
 
 use crate::engine::descriptor::Engine;
 use crate::key::KeyEvent;
-use crate::lookup_table::LookupTable;
-use crate::prop::{Prop, PropList};
 
 #[interface(name = "org.freedesktop.IBus.Engine")]
 impl Engine {
@@ -82,7 +80,11 @@ impl Engine {
     }
 
     async fn set_engine_name(&mut self, name: String) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.set_engine_name(&name, &self.handle).await;
+        self.inner
+            .lock()
+            .await
+            .set_engine_name(&name, &self.handle)
+            .await;
         Ok(())
     }
 
@@ -134,12 +136,20 @@ impl Engine {
     }
 
     async fn property_show(&mut self, prop_name: String) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.property_show(&prop_name, &self.handle).await;
+        self.inner
+            .lock()
+            .await
+            .property_show(&prop_name, &self.handle)
+            .await;
         Ok(())
     }
 
     async fn property_hide(&mut self, prop_name: String) -> zbus::fdo::Result<()> {
-        self.inner.lock().await.property_hide(&prop_name, &self.handle).await;
+        self.inner
+            .lock()
+            .await
+            .property_hide(&prop_name, &self.handle)
+            .await;
         Ok(())
     }
 
@@ -151,12 +161,15 @@ impl Engine {
     // ==================== Signals ====================
 
     #[zbus(signal)]
-    pub(crate) async fn commit_text(ctxt: &SignalEmitter<'_>, text: &str) -> zbus::Result<()>;
+    pub(crate) async fn commit_text(
+        ctxt: &SignalEmitter<'_>,
+        text: &zvariant::Value<'_>,
+    ) -> zbus::Result<()>;
 
     #[zbus(signal)]
     pub(crate) async fn update_preedit_text(
         ctxt: &SignalEmitter<'_>,
-        text: &str,
+        text: &zvariant::Value<'_>,
         cursor_pos: u32,
         visible: bool,
     ) -> zbus::Result<()>;
@@ -170,7 +183,7 @@ impl Engine {
     #[zbus(signal)]
     pub(crate) async fn update_lookup_table(
         ctxt: &SignalEmitter<'_>,
-        lookup_table: LookupTable,
+        lookup_table: &zvariant::Value<'_>,
         visible: bool,
     ) -> zbus::Result<()>;
 
@@ -183,7 +196,7 @@ impl Engine {
     #[zbus(signal)]
     pub(crate) async fn update_auxiliary_text(
         ctxt: &SignalEmitter<'_>,
-        text: &str,
+        text: &zvariant::Value<'_>,
         visible: bool,
     ) -> zbus::Result<()>;
 
@@ -196,11 +209,14 @@ impl Engine {
     #[zbus(signal)]
     pub(crate) async fn register_properties(
         ctxt: &SignalEmitter<'_>,
-        props: PropList,
+        props: &zvariant::Value<'_>,
     ) -> zbus::Result<()>;
 
     #[zbus(signal)]
-    pub(crate) async fn update_property(ctxt: &SignalEmitter<'_>, prop: Prop) -> zbus::Result<()>;
+    pub(crate) async fn update_property(
+        ctxt: &SignalEmitter<'_>,
+        prop: &zvariant::Value<'_>,
+    ) -> zbus::Result<()>;
 
     #[zbus(signal)]
     pub(crate) async fn forward_key_event(

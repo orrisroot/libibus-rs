@@ -28,6 +28,7 @@ impl Bus {
     pub fn new() -> Self;
 
     /// Resolve the IBus address, establish a D-Bus connection, and perform the hello handshake.
+    /// It automatically discovers the address from environment variables or `~/.config/ibus/bus/` (supporting order-independent parameter parsing like `unix:guid=...,path=...`).
     pub async fn connect(&mut self) -> Result<()>;
 
     /// Access the underlying zbus Connection.
@@ -171,3 +172,14 @@ impl SimpleEngine {
     }
 }
 ```
+
+---
+
+## 4. GVariant Serialization & `IBusSerializable`
+
+Core IBus structures (`Text`, `Attr`, `AttrList`, `LookupTable`, `Prop`, `PropList`) implement the custom serialization layer conforming to GLib's `GVariant` format and the IBus wire format (`IBusSerializable`).
+
+* **Serialization Layout**: Structs are serialized as `(class_name, attachments, ...fields)` flat D-Bus structure tuples.
+* **Compatibility**: Works directly with GLib/GDBus-based `ibus-daemon` installations without referencing any external C libraries.
+* **Optimization**: Signature parsing is cached using static/atomic initialization to maximize D-Bus message construction throughput.
+

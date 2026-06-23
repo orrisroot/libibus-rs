@@ -2,6 +2,9 @@ use zbus::Connection;
 
 use crate::dbus::InputContextProxy;
 use crate::error::{Error, Result};
+use crate::lookup_table::LookupTable;
+use crate::serializable::IBusSerializable;
+use crate::text::Text;
 
 bitflags::bitflags! {
     /// IBus capabilities flags.
@@ -273,10 +276,24 @@ impl InputContext {
     /// Get the name of the current engine.
     pub async fn get_engine(&self) -> Result<String> {
         let proxy = self.proxy.clone();
-        proxy
+        let val = proxy
             .get_engine()
             .await
-            .map_err(|e| Error::Engine(format!("get_engine failed: {}", e)))
+            .map_err(|e| Error::Engine(format!("get_engine failed: {}", e)))?;
+
+        let owned_val: zvariant::Value<'_> = val.into();
+        let inner = crate::serializable::unwrap_serializable(&owned_val, "IBusEngineDesc")?;
+        if let zvariant::Value::Structure(struct_) = inner {
+            let fields = struct_.fields();
+            if !fields.is_empty() {
+                let name: String = fields[0]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid engine name: {}", e)))?;
+                return Ok(name);
+            }
+        }
+        Err(Error::Connection("Invalid IBusEngineDesc structure".into()))
     }
 
     /// Report the cursor location and size to the engine.
@@ -318,8 +335,10 @@ impl InputContext {
         anchor_pos: u32,
     ) -> Result<()> {
         let mut proxy = self.proxy.clone();
+        let text_obj = Text::new(text);
+        let text_val = text_obj.to_value();
         proxy
-            .set_surrounding_text(text, cursor_pos, anchor_pos)
+            .set_surrounding_text(&text_val, cursor_pos, anchor_pos)
             .await
             .map_err(|e| Error::Engine(format!("set_surrounding_text failed: {}", e)))
     }
@@ -330,7 +349,7 @@ impl InputContext {
     pub async fn set_content_type(&self, hints: u32, purpose: u32) -> Result<()> {
         let mut proxy = self.proxy.clone();
         proxy
-            .set_content_type(hints, purpose)
+            .set_content_type((purpose, hints))
             .await
             .map_err(|e| Error::Engine(format!("set_content_type failed: {}", e)))
     }
@@ -353,7 +372,10 @@ impl InputContext {
 
         let handle = crate::signal::spawn_handler(stream, move |signal| {
             if let Ok(args) = signal.args() {
-                callback(args.text.to_string());
+                let val = zvariant::Value::from(args.text);
+                if let Ok(text_obj) = Text::from_value(&val) {
+                    callback(text_obj.text);
+                }
             }
         });
 
@@ -375,7 +397,10 @@ impl InputContext {
 
         let handle = crate::signal::spawn_handler(stream, move |signal| {
             if let Ok(args) = signal.args() {
-                callback(args.text.to_string(), args.cursor_pos, args.visible);
+                let val = zvariant::Value::from(args.text);
+                if let Ok(text_obj) = Text::from_value(&val) {
+                    callback(text_obj.text, args.cursor_pos, args.visible);
+                }
             }
         });
 
@@ -431,7 +456,10 @@ impl InputContext {
 
         let handle = crate::signal::spawn_handler(stream, move |signal| {
             if let Ok(args) = signal.args() {
-                callback(args.text.to_string(), args.visible);
+                let val = zvariant::Value::from(args.text);
+                if let Ok(text_obj) = Text::from_value(&val) {
+                    callback(text_obj.text, args.visible);
+                }
             }
         });
 
@@ -487,7 +515,10 @@ impl InputContext {
 
         let handle = crate::signal::spawn_handler(stream, move |signal| {
             if let Ok(args) = signal.args() {
-                callback(args.lookup_table.clone(), args.visible);
+                let val = zvariant::Value::from(args.lookup_table);
+                if let Ok(table) = LookupTable::from_value(&val) {
+                    callback(table, args.visible);
+                }
             }
         });
 

@@ -222,7 +222,13 @@ impl EngineImpl for DemoEngine {
     }
 
     /// Handle candidate clicked from the panel.
-    async fn candidate_clicked(&mut self, index: u32, _button: u32, _state: u32, handle: &EngineHandle) {
+    async fn candidate_clicked(
+        &mut self,
+        index: u32,
+        _button: u32,
+        _state: u32,
+        handle: &EngineHandle,
+    ) {
         let candidate = format!("候補{}", index + 1);
         let _ = handle.commit_text(&candidate).await;
         let _ = handle.hide_lookup_table().await;

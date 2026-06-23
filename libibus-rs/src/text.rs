@@ -104,3 +104,44 @@ impl std::fmt::Display for Text {
         f.write_str(&self.text)
     }
 }
+
+use crate::error::{Error, Result};
+use crate::serializable::{IBusSerializable, unwrap_serializable, wrap_serializable};
+use zvariant::Value;
+
+impl IBusSerializable for Text {
+    fn class_name() -> &'static str {
+        "IBusText"
+    }
+
+    fn to_value(&self) -> Value<'static> {
+        let inner = Value::from((self.text.clone(), self.attrs.to_value()));
+        wrap_serializable(Self::class_name(), inner)
+    }
+
+    fn from_value(value: &Value<'_>) -> Result<Self> {
+        let inner = unwrap_serializable(value, Self::class_name())?;
+        if let Value::Structure(struct_) = inner {
+            let fields = struct_.fields();
+            if fields.len() >= 2 {
+                let text_str: String = fields[0]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid text: {}", e)))?;
+                let attrs_val = if let Value::Value(v) = &fields[1] {
+                    v.as_ref()
+                } else {
+                    &fields[1]
+                };
+                let attrs = AttrList::from_value(attrs_val)?;
+                let cursor_pos = text_str.len() as u32;
+                return Ok(Text {
+                    text: text_str,
+                    attrs,
+                    cursor_pos,
+                });
+            }
+        }
+        Err(Error::Connection("Invalid IBusText inner structure".into()))
+    }
+}

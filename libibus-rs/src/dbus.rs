@@ -1,7 +1,6 @@
 use zbus::proxy;
 
 use crate::component::Component;
-use crate::lookup_table::LookupTable;
 use zvariant::OwnedObjectPath;
 
 #[proxy(
@@ -88,25 +87,33 @@ pub trait InputContext {
     fn focus_out(&mut self) -> zbus::Result<()>;
     fn reset(&mut self) -> zbus::Result<()>;
     fn set_engine(&mut self, engine_name: &str) -> zbus::Result<()>;
-    fn get_engine(&self) -> zbus::Result<String>;
+    fn get_engine(&self) -> zbus::Result<zvariant::OwnedValue>;
     fn set_cursor_location(&mut self, x: i32, y: i32, w: i32, h: i32) -> zbus::Result<()>;
     fn set_capabilities(&mut self, caps: u32) -> zbus::Result<()>;
     fn set_surrounding_text(
         &mut self,
-        text: &str,
+        text: &zvariant::Value<'_>,
         cursor_pos: u32,
         anchor_pos: u32,
     ) -> zbus::Result<()>;
-    fn set_content_type(&mut self, hints: u32, purpose: u32) -> zbus::Result<()>;
+
+    #[zbus(property)]
+    fn set_content_type(&mut self, value: (u32, u32)) -> zbus::Result<()>;
+
     fn process_key_event(&mut self, keyval: u32, keycode: u32, state: u32) -> zbus::Result<bool>;
 
     // --- Signals emitted by the engine (received by the client app) ---
 
     #[zbus(signal)]
-    fn commit_text(&self, text: &str) -> zbus::Result<()>;
+    fn commit_text(&self, text: zvariant::OwnedValue) -> zbus::Result<()>;
 
     #[zbus(signal)]
-    fn update_preedit_text(&self, text: &str, cursor_pos: u32, visible: bool) -> zbus::Result<()>;
+    fn update_preedit_text(
+        &self,
+        text: zvariant::OwnedValue,
+        cursor_pos: u32,
+        visible: bool,
+    ) -> zbus::Result<()>;
 
     #[zbus(signal)]
     fn show_preedit_text(&self) -> zbus::Result<()>;
@@ -115,7 +122,7 @@ pub trait InputContext {
     fn hide_preedit_text(&self) -> zbus::Result<()>;
 
     #[zbus(signal)]
-    fn update_auxiliary_text(&self, text: &str, visible: bool) -> zbus::Result<()>;
+    fn update_auxiliary_text(&self, text: zvariant::OwnedValue, visible: bool) -> zbus::Result<()>;
 
     #[zbus(signal)]
     fn show_auxiliary_text(&self) -> zbus::Result<()>;
@@ -124,7 +131,11 @@ pub trait InputContext {
     fn hide_auxiliary_text(&self) -> zbus::Result<()>;
 
     #[zbus(signal)]
-    fn update_lookup_table(&self, lookup_table: LookupTable, visible: bool) -> zbus::Result<()>;
+    fn update_lookup_table(
+        &self,
+        lookup_table: zvariant::OwnedValue,
+        visible: bool,
+    ) -> zbus::Result<()>;
 
     #[zbus(signal)]
     fn show_lookup_table(&self) -> zbus::Result<()>;

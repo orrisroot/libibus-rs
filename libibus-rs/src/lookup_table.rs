@@ -319,3 +319,126 @@ impl LookupTable {
         self.candidates.get(self.cursor_pos as usize)
     }
 }
+
+use crate::error::{Error, Result};
+use crate::serializable::{
+    IBusSerializable, unwrap_serializable, variant_signature, wrap_serializable,
+};
+use zvariant::Value;
+
+impl IBusSerializable for LookupTable {
+    fn class_name() -> &'static str {
+        "IBusLookupTable"
+    }
+
+    fn to_value(&self) -> Value<'static> {
+        let sig = variant_signature();
+
+        let mut cand_array = zvariant::Array::new(sig);
+        for cand in &self.candidates {
+            cand_array
+                .append(Value::Value(Box::new(cand.to_value())))
+                .unwrap();
+        }
+        let cands = Value::Array(cand_array);
+
+        let mut label_array = zvariant::Array::new(sig);
+        for label in &self.labels {
+            label_array
+                .append(Value::Value(Box::new(label.to_value())))
+                .unwrap();
+        }
+        let labels = Value::Array(label_array);
+
+        let inner = Value::from((
+            self.page_size,
+            self.cursor_pos,
+            self.cursor_visible,
+            self.round,
+            self.orientation as i32,
+            cands,
+            labels,
+        ));
+        wrap_serializable(Self::class_name(), inner)
+    }
+
+    fn from_value(value: &Value<'_>) -> Result<Self> {
+        let inner = unwrap_serializable(value, Self::class_name())?;
+        if let Value::Structure(struct_) = inner {
+            let fields = struct_.fields();
+            if fields.len() >= 7 {
+                let page_size = fields[0]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid page_size: {}", e)))?;
+                let cursor_pos = fields[1]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid cursor_pos: {}", e)))?;
+                let cursor_visible = fields[2]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid cursor_visible: {}", e)))?;
+                let round = fields[3]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid round: {}", e)))?;
+                let orientation_i32: i32 = fields[4]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid orientation: {}", e)))?;
+                let orientation = orientation_i32 as u32;
+
+                let cands_val = if let Value::Value(v) = &fields[5] {
+                    v.as_ref()
+                } else {
+                    &fields[5]
+                };
+                let candidates = if let Value::Array(arr) = cands_val {
+                    let mut c = Vec::new();
+                    for v in arr.as_ref() {
+                        c.push(Text::from_value(v)?);
+                    }
+                    c
+                } else {
+                    return Err(Error::Connection("Invalid candidates array".into()));
+                };
+
+                let labels_val = if let Value::Value(v) = &fields[6] {
+                    v.as_ref()
+                } else {
+                    &fields[6]
+                };
+                let labels = if let Value::Array(arr) = labels_val {
+                    let mut l = Vec::new();
+                    for v in arr.as_ref() {
+                        l.push(Text::from_value(v)?);
+                    }
+                    l
+                } else {
+                    return Err(Error::Connection("Invalid labels array".into()));
+                };
+
+                let cursor_pos_in_page = if page_size > 0 {
+                    cursor_pos % page_size
+                } else {
+                    0
+                };
+
+                return Ok(LookupTable {
+                    candidates,
+                    labels,
+                    cursor_pos,
+                    cursor_visible,
+                    round,
+                    orientation,
+                    page_size,
+                    cursor_pos_in_page,
+                });
+            }
+        }
+        Err(Error::Connection(
+            "Invalid IBusLookupTable inner structure".into(),
+        ))
+    }
+}

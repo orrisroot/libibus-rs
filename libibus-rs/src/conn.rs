@@ -22,14 +22,12 @@ pub async fn connect() -> Result<(zbus::Connection, IBusProxy<'static>)> {
         .await
         .map_err(|e| Error::Connection(format!("Failed to connect to IBus: {}", e)))?;
 
-    let mut bus_proxy = IBusProxy::new(&connection)
+    let bus_proxy = IBusProxy::new(&connection)
         .await
         .map_err(|e| Error::Connection(format!("Failed to get IBus proxy: {}", e)))?;
 
-    bus_proxy
-        .hello()
-        .await
-        .map_err(|e| Error::Connection(format!("IBus hello failed: {}", e)))?;
+    // No need to call hello on org.freedesktop.IBus as it doesn't exist.
+    // The standard D-Bus Hello is handled automatically by zbus.
 
     Ok((connection, bus_proxy))
 }

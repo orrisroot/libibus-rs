@@ -45,13 +45,28 @@ pub trait EngineImpl: Send {
     async fn disable(&mut self, _handle: &EngineHandle) {}
 
     /// The cursor location changed.
-    async fn set_cursor_location(&mut self, _x: i32, _y: i32, _w: i32, _h: i32, _handle: &EngineHandle) {}
+    async fn set_cursor_location(
+        &mut self,
+        _x: i32,
+        _y: i32,
+        _w: i32,
+        _h: i32,
+        _handle: &EngineHandle,
+    ) {
+    }
 
     /// The content type of the focused input field changed.
     async fn set_content_type(&mut self, _hints: u32, _purpose: u32, _handle: &EngineHandle) {}
 
     /// Surrounding text around the cursor was provided.
-    async fn set_surrounding_text(&mut self, _text: &str, _cursor_pos: u32, _anchor_pos: u32, _handle: &EngineHandle) {}
+    async fn set_surrounding_text(
+        &mut self,
+        _text: &str,
+        _cursor_pos: u32,
+        _anchor_pos: u32,
+        _handle: &EngineHandle,
+    ) {
+    }
 
     /// The engine name was set by the daemon.
     async fn set_engine_name(&mut self, _name: &str, _handle: &EngineHandle) {}
@@ -72,12 +87,25 @@ pub trait EngineImpl: Send {
     ///
     /// `index` is the candidate index, `button` is the mouse button number,
     /// and `state` is the modifier state.
-    async fn candidate_clicked(&mut self, _index: u32, _button: u32, _state: u32, _handle: &EngineHandle) {}
+    async fn candidate_clicked(
+        &mut self,
+        _index: u32,
+        _button: u32,
+        _state: u32,
+        _handle: &EngineHandle,
+    ) {
+    }
 
     /// A property (button/menu item) was activated by the user.
     ///
     /// `prop_name` is the property key, `prop_state` is the new state value.
-    async fn property_activate(&mut self, _prop_name: &str, _prop_state: u32, _handle: &EngineHandle) {}
+    async fn property_activate(
+        &mut self,
+        _prop_name: &str,
+        _prop_state: u32,
+        _handle: &EngineHandle,
+    ) {
+    }
 
     /// Show a specific property in the panel.
     async fn property_show(&mut self, _prop_name: &str, _handle: &EngineHandle) {}

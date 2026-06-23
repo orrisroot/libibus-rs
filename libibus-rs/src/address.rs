@@ -44,7 +44,13 @@ fn get_address_file_path(display_num: &str) -> Result<PathBuf> {
             }
             if let Some(name) = path.file_name() {
                 let name = name.to_string_lossy();
-                if name.starts_with(&format!("{}-", display_num)) || name == display_num {
+                let display_suffix = format!("-unix-{}", display_num);
+                let display_suffix_short = format!("-{}", display_num);
+                if name.starts_with(&format!("{}-", display_num))
+                    || name == display_num
+                    || name.ends_with(&display_suffix)
+                    || name.ends_with(&display_suffix_short)
+                {
                     return Ok(path);
                 }
             }
@@ -62,6 +68,27 @@ fn get_address_file_path(display_num: &str) -> Result<PathBuf> {
     )))
 }
 
+/// Parse a unix D-Bus address to extract the socket path.
+/// E.g. "unix:path=/tmp/socket,guid=abc" -> Some("/tmp/socket")
+/// E.g. "unix:abstract=ibus,guid=abc" -> Some("@ibus")
+fn parse_unix_socket_path(address: &str) -> Option<String> {
+    if let Some(params) = address.strip_prefix("unix:") {
+        for param in params.split(',') {
+            if let Some(path) = param.strip_prefix("path=") {
+                return Some(path.to_owned());
+            }
+            if let Some(abstract_path) = param.strip_prefix("abstract=") {
+                return Some(format!("@{}", abstract_path));
+            }
+        }
+        // Fallback for cases where "unix:/path" is directly specified
+        if !params.contains('=') && !params.is_empty() {
+            return Some(params.to_owned());
+        }
+    }
+    None
+}
+
 fn parse_address(contents: &str) -> Result<Address> {
     let mut host = String::new();
     let mut port = 0u32;
@@ -69,26 +96,33 @@ fn parse_address(contents: &str) -> Result<Address> {
 
     for line in contents.lines() {
         let line = line.trim();
-        if let Some(value) = line.strip_prefix("--host=") {
-            host = value.to_owned();
-        } else if let Some(value) = line.strip_prefix("--port=") {
-            port = value
-                .parse()
-                .map_err(|e| Error::Address(format!("Invalid port: {}", e)))?;
-        } else if let Some(value) = line.strip_prefix("--address=") {
-            let path = value.to_owned();
-            if path.starts_with("unix:") {
-                if let Some(socket) = path.strip_prefix("unix:path=") {
-                    socket_path = socket.to_owned();
-                } else if let Some(socket) = path.strip_prefix("unix:abstract=") {
-                    socket_path = format!("@{}", socket);
-                } else if let Some(socket) = path.strip_prefix("unix:") {
-                    socket_path = socket.to_owned();
+        let val = if let Some(v) = line.strip_prefix("--host=") {
+            Some(("host", v))
+        } else if let Some(v) = line.strip_prefix("--port=") {
+            Some(("port", v))
+        } else if let Some(v) = line.strip_prefix("--address=") {
+            Some(("address", v))
+        } else if let Some(v) = line.strip_prefix("IBUS_ADDRESS=") {
+            Some(("address", v))
+        } else {
+            None
+        };
+
+        if let Some((key, value)) = val {
+            if key == "host" {
+                host = value.to_owned();
+            } else if key == "port" {
+                port = value
+                    .parse()
+                    .map_err(|e| Error::Address(format!("Invalid port: {}", e)))?;
+            } else if key == "address" {
+                if value.starts_with("unix:") {
+                    if let Some(parsed_path) = parse_unix_socket_path(value) {
+                        socket_path = parsed_path;
+                    }
                 } else {
-                    socket_path = path;
+                    socket_path = value.to_owned();
                 }
-            } else {
-                socket_path = path;
             }
         }
     }
@@ -114,10 +148,16 @@ fn validate_host(host: &str) -> Result<()> {
         return Ok(());
     }
     // Allow only safe characters: alphanumeric, '.', '-', ':', '[', ']'
-    if host.chars().all(|c| c.is_alphanumeric() || c == '.' || c == '-' || c == ':' || c == '[' || c == ']') {
+    if host
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '.' || c == '-' || c == ':' || c == '[' || c == ']')
+    {
         Ok(())
     } else {
-        Err(Error::Address(format!("Invalid characters in host: {}", host)))
+        Err(Error::Address(format!(
+            "Invalid characters in host: {}",
+            host
+        )))
     }
 }
 
@@ -127,7 +167,9 @@ fn validate_socket_path(path: &str) -> Result<()> {
     }
     // Reject commas as they are used as option delimiters in D-Bus addresses
     if path.contains(',') {
-        return Err(Error::Address("Socket path contains invalid character ','".into()));
+        return Err(Error::Address(
+            "Socket path contains invalid character ','".into(),
+        ));
     }
     Ok(())
 }
@@ -148,6 +190,34 @@ pub fn connect_address() -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_address_valid_unix_with_options() {
+        let content = "--address=unix:path=/tmp/socket,guid=abcdef,param=value\n";
+        let addr = parse_address(content).unwrap();
+        assert_eq!(addr.socket_path, "/tmp/socket");
+    }
+
+    #[test]
+    fn test_parse_address_unix_guid_first() {
+        let content = "--address=unix:guid=abcdef,path=/tmp/socket,param=value\n";
+        let addr = parse_address(content).unwrap();
+        assert_eq!(addr.socket_path, "/tmp/socket");
+    }
+
+    #[test]
+    fn test_parse_address_unix_abstract() {
+        let content = "--address=unix:abstract=ibus-websocket,guid=abcdef\n";
+        let addr = parse_address(content).unwrap();
+        assert_eq!(addr.socket_path, "@ibus-websocket");
+    }
+
+    #[test]
+    fn test_parse_address_unix_direct() {
+        let content = "--address=unix:/tmp/socket\n";
+        let addr = parse_address(content).unwrap();
+        assert_eq!(addr.socket_path, "/tmp/socket");
+    }
 
     #[test]
     fn test_parse_address_valid_unix() {
@@ -175,7 +245,7 @@ mod tests {
 
     #[test]
     fn test_parse_address_invalid_socket_path() {
-        let content = "--address=unix:path=/tmp/socket,param=value\n";
+        let content = "--address=unix:guid=abcdef\n";
         assert!(parse_address(content).is_err());
     }
 }

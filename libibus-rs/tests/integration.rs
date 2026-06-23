@@ -29,10 +29,15 @@ fn has_ibus_daemon() -> bool {
         Err(_) => return false,
     };
 
+    let suffix = format!("-unix-{}", display_num);
+    let suffix_short = format!("-{}", display_num);
     for entry in entries.flatten() {
         let name = entry.file_name();
         if let Some(s) = name.to_str() {
-            if s.starts_with(&format!("{}-unix-", display_num)) {
+            if s.starts_with(&format!("{}-unix-", display_num))
+                || s.ends_with(&suffix)
+                || s.ends_with(&suffix_short)
+            {
                 return true;
             }
         }
@@ -404,7 +409,11 @@ async fn test_engine_trait_defaults() {
 
     #[async_trait::async_trait]
     impl EngineImpl for NoOpEngine {
-        async fn process_key_event(&mut self, _event: &KeyEvent, _handle: &libibus_rs::EngineHandle) -> bool {
+        async fn process_key_event(
+            &mut self,
+            _event: &KeyEvent,
+            _handle: &libibus_rs::EngineHandle,
+        ) -> bool {
             false
         }
         // All other methods use default implementations
@@ -424,7 +433,11 @@ async fn test_engine_trait_defaults() {
     let mut engine = NoOpEngine;
 
     // All default methods should not panic
-    assert!(!engine.process_key_event(&KeyEvent::new(0x0061, 0, 0), &handle).await);
+    assert!(
+        !engine
+            .process_key_event(&KeyEvent::new(0x0061, 0, 0), &handle)
+            .await
+    );
     engine.focus_in(&handle).await;
     engine.focus_out(&handle).await;
     engine.reset(&handle).await;
@@ -491,7 +504,17 @@ async fn test_input_context_with_path() {
         .expect("set surrounding text");
 
     // Test set_engine
-    ic.set_engine("xkb:us::eng").await.expect("set engine");
+    if let Err(e) = ic.set_engine("xkb:us::eng").await {
+        // We only allow setting to fail if the environment has use-global-engine enabled.
+        // Any other connection or signature mismatch errors must fail the test.
+        let err_msg = e.to_string();
+        assert!(
+            err_msg.contains("use-global-engine") || err_msg.contains("Cannot set engines"),
+            "set_engine failed with unexpected error: {:?}",
+            e
+        );
+        eprintln!("Info: set_engine was bypassed because use-global-engine is active.");
+    }
 
     // Test get_engine
     let engine_name = ic.get_engine().await.expect("get engine");
@@ -582,7 +605,11 @@ async fn test_factory_trait_defaults() {
             struct Empty;
             #[async_trait::async_trait]
             impl EngineImpl for Empty {
-                async fn process_key_event(&mut self, _event: &KeyEvent, _handle: &libibus_rs::EngineHandle) -> bool {
+                async fn process_key_event(
+                    &mut self,
+                    _event: &KeyEvent,
+                    _handle: &libibus_rs::EngineHandle,
+                ) -> bool {
                     false
                 }
             }

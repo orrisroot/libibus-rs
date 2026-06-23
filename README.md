@@ -4,7 +4,8 @@ A pure Rust client library for [IBus](https://github.com/ibus/ibus) (Intelligent
 
 ## Features
 
-- **Bus** — Connect to `ibus-daemon` via UNIX socket, exchange hello, register components, create input contexts
+- **GVariant & IBus Compatibility** — Pure-Rust implementation of IBus `IBusSerializable` structures (`(class_name, attachments, ...fields)` flat tuple structure with signature caching). Fully compatible with GLib/GDBus-based `ibus-daemon` without C library dependencies.
+- **Bus** — Auto-discover and connect to `ibus-daemon` via UNIX socket (handles complex D-Bus addresses with arbitrary parameter order, e.g. `unix:guid=...,path=...`). Supports component registration and input context creation.
 - **Engine** — `EngineImpl` trait for implementing input method engines (key events, preedit, candidates, properties, lookup navigation)
 - **EngineHandle** — Emit signals: commit text, preedit, lookup table, auxiliary text, properties, delete surrounding text, and more
 - **Factory** — `FactoryImpl` trait for creating engine instances on demand
@@ -18,6 +19,7 @@ A pure Rust client library for [IBus](https://github.com/ibus/ibus) (Intelligent
 - **Config** — Configuration get/set with cancellable value-change signal subscription
 - **Panel** — Panel proxy (focus, engine activation signals)
 - **Caps / Purpose / Hint** — Input context capability flags and content type constants
+
 
 ## Architecture
 

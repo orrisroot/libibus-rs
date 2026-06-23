@@ -125,6 +125,8 @@ pub struct Prop {
     /// Note: This is a `Box<PropList>` (not `PropList`) to break the recursive
     /// `zvariant::Type` derive cycle between `Prop` and `PropList`.
     pub sub_props: Box<PropList>,
+    /// Symbol text representation of the property (e.g. used for displaying key cap symbols in the panel).
+    pub symbol: Text,
 }
 
 impl Prop {
@@ -140,6 +142,7 @@ impl Prop {
             visible: true,
             state: PropState::Unchecked as u32,
             sub_props: Box::new(PropList::new()),
+            symbol: Text::new(""),
         }
     }
 
@@ -155,6 +158,7 @@ impl Prop {
             visible: true,
             state: PropState::Unchecked as u32,
             sub_props: Box::new(PropList::new()),
+            symbol: Text::new(""),
         }
     }
 
@@ -221,6 +225,12 @@ impl Prop {
     /// Attach sub-properties (for menu-type properties).
     pub fn set_sub_props(&mut self, sub_props: PropList) -> &mut Self {
         self.sub_props = Box::new(sub_props);
+        self
+    }
+
+    /// Set the symbol text.
+    pub fn set_symbol(&mut self, symbol: &str) -> &mut Self {
+        self.symbol = Text::new(symbol);
         self
     }
 
@@ -323,5 +333,153 @@ impl PropList {
 impl From<Vec<Prop>> for PropList {
     fn from(props: Vec<Prop>) -> Self {
         Self { props }
+    }
+}
+
+use crate::error::{Error, Result};
+use crate::serializable::{
+    IBusSerializable, unwrap_serializable, variant_signature, wrap_serializable,
+};
+use zvariant::Value;
+
+impl IBusSerializable for Prop {
+    fn class_name() -> &'static str {
+        "IBusProperty"
+    }
+
+    fn to_value(&self) -> Value<'static> {
+        let label_val = self.label.to_value();
+        let tooltip_val = self.tooltip.to_value();
+        let sub_props_val = self.sub_props.to_value();
+        let symbol_val = self.symbol.to_value();
+
+        let inner = Value::from((
+            self.key.clone(),
+            self.prop_type,
+            label_val,
+            self.icon.clone(),
+            tooltip_val,
+            self.sensitive,
+            self.visible,
+            self.state,
+            sub_props_val,
+            symbol_val,
+        ));
+        wrap_serializable(Self::class_name(), inner)
+    }
+
+    fn from_value(value: &Value<'_>) -> Result<Self> {
+        let inner = unwrap_serializable(value, Self::class_name())?;
+        if let Value::Structure(struct_) = inner {
+            let fields = struct_.fields();
+            if fields.len() >= 9 {
+                let key = fields[0]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid key: {}", e)))?;
+                let prop_type = fields[1]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid prop_type: {}", e)))?;
+
+                let label_val = if let Value::Value(v) = &fields[2] {
+                    v.as_ref()
+                } else {
+                    &fields[2]
+                };
+                let label = Text::from_value(label_val)?;
+
+                let icon = fields[3]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid icon: {}", e)))?;
+
+                let tooltip_val = if let Value::Value(v) = &fields[4] {
+                    v.as_ref()
+                } else {
+                    &fields[4]
+                };
+                let tooltip = Text::from_value(tooltip_val)?;
+
+                let sensitive = fields[5]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid sensitive: {}", e)))?;
+                let visible = fields[6]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid visible: {}", e)))?;
+                let state = fields[7]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid state: {}", e)))?;
+
+                let sub_props_val = if let Value::Value(v) = &fields[8] {
+                    v.as_ref()
+                } else {
+                    &fields[8]
+                };
+                let sub_props = Box::new(PropList::from_value(sub_props_val)?);
+
+                let symbol = if fields.len() >= 10 {
+                    let symbol_val = if let Value::Value(v) = &fields[9] {
+                        v.as_ref()
+                    } else {
+                        &fields[9]
+                    };
+                    Text::from_value(symbol_val)?
+                } else {
+                    Text::new("")
+                };
+
+                return Ok(Prop {
+                    key,
+                    prop_type,
+                    label,
+                    icon,
+                    tooltip,
+                    sensitive,
+                    visible,
+                    state,
+                    sub_props,
+                    symbol,
+                });
+            }
+        }
+        Err(Error::Connection(
+            "Invalid IBusProperty inner structure".into(),
+        ))
+    }
+}
+
+impl IBusSerializable for PropList {
+    fn class_name() -> &'static str {
+        "IBusPropList"
+    }
+
+    fn to_value(&self) -> Value<'static> {
+        let sig = variant_signature();
+        let mut array = zvariant::Array::new(sig);
+        for prop in &self.props {
+            array
+                .append(Value::Value(Box::new(prop.to_value())))
+                .unwrap();
+        }
+        let inner = Value::Array(array);
+        wrap_serializable(Self::class_name(), inner)
+    }
+
+    fn from_value(value: &Value<'_>) -> Result<Self> {
+        let inner = unwrap_serializable(value, Self::class_name())?;
+        if let Value::Array(arr) = inner {
+            let mut props = Vec::new();
+            for val in arr.as_ref() {
+                props.push(Prop::from_value(val)?);
+            }
+            return Ok(PropList { props });
+        }
+        Err(Error::Connection(
+            "Invalid IBusPropList inner structure".into(),
+        ))
     }
 }

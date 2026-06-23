@@ -3,6 +3,7 @@ use zbus::object_server::SignalEmitter;
 use crate::engine::descriptor::Engine;
 use crate::lookup_table::LookupTable;
 use crate::prop::{Prop, PropList};
+use crate::serializable::IBusSerializable;
 
 /// Handle for emitting IBus engine signals.
 ///
@@ -35,18 +36,21 @@ impl EngineHandle {
     }
 
     /// Emit the `CommitText` signal.
-    pub async fn commit_text(&self, text: &str) -> zbus::Result<()> {
-        Engine::commit_text(&self.signal_ctxt, text).await
+    pub async fn commit_text(&self, text: impl Into<crate::text::Text>) -> zbus::Result<()> {
+        let text_obj = text.into();
+        Engine::commit_text(&self.signal_ctxt, &text_obj.to_value()).await
     }
 
     /// Emit the `UpdatePreeditText` signal.
     pub async fn update_preedit_text(
         &self,
-        text: &str,
+        text: impl Into<crate::text::Text>,
         cursor_pos: u32,
         visible: bool,
     ) -> zbus::Result<()> {
-        Engine::update_preedit_text(&self.signal_ctxt, text, cursor_pos, visible).await
+        let text_obj = text.into();
+        Engine::update_preedit_text(&self.signal_ctxt, &text_obj.to_value(), cursor_pos, visible)
+            .await
     }
 
     /// Emit the `ShowPreeditText` signal.
@@ -65,7 +69,7 @@ impl EngineHandle {
         lookup_table: LookupTable,
         visible: bool,
     ) -> zbus::Result<()> {
-        Engine::update_lookup_table(&self.signal_ctxt, lookup_table, visible).await
+        Engine::update_lookup_table(&self.signal_ctxt, &lookup_table.to_value(), visible).await
     }
 
     /// Emit the `ShowLookupTable` signal.
@@ -79,8 +83,13 @@ impl EngineHandle {
     }
 
     /// Emit the `UpdateAuxiliaryText` signal.
-    pub async fn update_auxiliary_text(&self, text: &str, visible: bool) -> zbus::Result<()> {
-        Engine::update_auxiliary_text(&self.signal_ctxt, text, visible).await
+    pub async fn update_auxiliary_text(
+        &self,
+        text: impl Into<crate::text::Text>,
+        visible: bool,
+    ) -> zbus::Result<()> {
+        let text_obj = text.into();
+        Engine::update_auxiliary_text(&self.signal_ctxt, &text_obj.to_value(), visible).await
     }
 
     /// Emit the `ShowAuxiliaryText` signal.
@@ -95,12 +104,12 @@ impl EngineHandle {
 
     /// Emit the `RegisterProperties` signal.
     pub async fn register_properties(&self, props: PropList) -> zbus::Result<()> {
-        Engine::register_properties(&self.signal_ctxt, props).await
+        Engine::register_properties(&self.signal_ctxt, &props.to_value()).await
     }
 
     /// Emit the `UpdateProperty` signal.
     pub async fn update_property(&self, prop: Prop) -> zbus::Result<()> {
-        Engine::update_property(&self.signal_ctxt, prop).await
+        Engine::update_property(&self.signal_ctxt, &prop.to_value()).await
     }
 
     /// Emit the `ForwardKeyEvent` signal.

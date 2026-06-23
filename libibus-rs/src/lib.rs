@@ -20,7 +20,10 @@ pub mod xml;
 pub(crate) mod address;
 pub(crate) mod conn;
 pub(crate) mod dbus;
+pub mod serializable;
 pub(crate) mod signal;
+
+pub use serializable::IBusSerializable;
 
 // Re-exports for convenience
 pub use attr::{Attr, AttrList, AttrType};

@@ -134,3 +134,86 @@ impl From<Vec<Attr>> for AttrList {
         Self { attrs }
     }
 }
+
+use crate::error::{Error, Result};
+use crate::serializable::{
+    IBusSerializable, unwrap_serializable, variant_signature, wrap_serializable,
+};
+use zvariant::Value;
+
+impl IBusSerializable for Attr {
+    fn class_name() -> &'static str {
+        "IBusAttribute"
+    }
+
+    fn to_value(&self) -> Value<'static> {
+        let inner = Value::from((self.attr_type, self.value, self.start_index, self.end_index));
+        wrap_serializable(Self::class_name(), inner)
+    }
+
+    fn from_value(value: &Value<'_>) -> Result<Self> {
+        let inner = unwrap_serializable(value, Self::class_name())?;
+        if let Value::Structure(struct_) = inner {
+            let fields = struct_.fields();
+            if fields.len() >= 4 {
+                let attr_type = fields[0]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid attr_type: {}", e)))?;
+                let value_num = fields[1]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid value: {}", e)))?;
+                let start_index = fields[2]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid start_index: {}", e)))?;
+                let end_index = fields[3]
+                    .clone()
+                    .try_into()
+                    .map_err(|e| Error::Connection(format!("Invalid end_index: {}", e)))?;
+                return Ok(Attr {
+                    attr_type,
+                    value: value_num,
+                    start_index,
+                    end_index,
+                });
+            }
+        }
+        Err(Error::Connection(
+            "Invalid IBusAttribute inner structure".into(),
+        ))
+    }
+}
+
+impl IBusSerializable for AttrList {
+    fn class_name() -> &'static str {
+        "IBusAttrList"
+    }
+
+    fn to_value(&self) -> Value<'static> {
+        let sig = variant_signature();
+        let mut array = zvariant::Array::new(sig);
+        for attr in &self.attrs {
+            array
+                .append(Value::Value(Box::new(attr.to_value())))
+                .unwrap();
+        }
+        let inner = Value::Array(array);
+        wrap_serializable(Self::class_name(), inner)
+    }
+
+    fn from_value(value: &Value<'_>) -> Result<Self> {
+        let inner = unwrap_serializable(value, Self::class_name())?;
+        if let Value::Array(arr) = inner {
+            let mut attrs = Vec::new();
+            for val in arr.as_ref() {
+                attrs.push(Attr::from_value(val)?);
+            }
+            return Ok(AttrList { attrs });
+        }
+        Err(Error::Connection(
+            "Invalid IBusAttrList inner structure".into(),
+        ))
+    }
+}
