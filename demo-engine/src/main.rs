@@ -307,6 +307,10 @@ async fn main() -> Result<()> {
 
     libibus_rs::factory::register(&conn, Box::new(DemoFactory)).await?;
 
+    if let Err(e) = bus.set_global_engine("libibus-rs-demo").await {
+        println!("Warning: Could not set global engine: {}", e);
+    }
+
     println!("Demo engine registered. Waiting for D-Bus requests...");
     println!("Press Ctrl+C to stop.");
 

@@ -1,6 +1,5 @@
 use zbus::proxy;
 
-use crate::component::Component;
 use zvariant::OwnedObjectPath;
 
 #[proxy(
@@ -13,10 +12,11 @@ pub trait IBus {
 
     fn create_input_context(&mut self, client_name: &str) -> zbus::Result<OwnedObjectPath>;
 
-    fn register_component(&mut self, component: Component) -> zbus::Result<()>;
+    fn register_component(&mut self, component: &zvariant::Value<'_>) -> zbus::Result<()>;
 
     fn get_address(&mut self) -> zbus::Result<String>;
 
+    #[zbus(name = "SetGlobalEngine")]
     fn set_global_engine_async(&mut self, engine_name: &str) -> zbus::Result<()>;
 
     fn current_input_context(&self) -> zbus::Result<OwnedObjectPath>;

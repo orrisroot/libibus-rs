@@ -117,6 +117,9 @@ async fn main() -> libibus_rs::Result<()> {
         "ja",
     );
     component.add_engine(engine_desc);
+    
+    // Optionally watch for configuration file changes
+    component.watch_paths.push("/etc/my-engine.conf".into());
 
     // Register factory on the bus connection
     let conn = bus.connection()?.clone();

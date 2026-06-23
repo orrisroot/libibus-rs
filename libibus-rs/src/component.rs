@@ -1,5 +1,7 @@
+use crate::error::{Error, Result};
+use crate::serializable::{IBusSerializable, variant_signature, wrap_serializable};
 use serde::{Deserialize, Serialize};
-use zvariant::Type;
+use zvariant::{Array, Type, Value};
 
 /// Best engine rank.
 pub const ENGINE_RANK_BEST: u32 = 0;
@@ -234,5 +236,126 @@ impl Component {
     pub fn add_watch_path(&mut self, path: &str) -> &mut Self {
         self.watch_paths.push(path.to_owned());
         self
+    }
+}
+
+/// Implementation of `IBusSerializable` for `EngineDesc`.
+/// This maps the Rust structure to the D-Bus variant structure expected by IBus.
+/// The fields are ordered strictly to match the C `IBusEngineDesc` deserialization logic.
+impl IBusSerializable for EngineDesc {
+    fn class_name() -> &'static str {
+        "IBusEngineDesc"
+    }
+
+    fn to_value(&self) -> Value<'static> {
+        let mut hotkeys_array = Array::new(&zvariant::Signature::Str);
+        for h in &self.hotkeys {
+            hotkeys_array.append(Value::new(h.clone())).unwrap();
+        }
+
+        let mut builder = zvariant::StructureBuilder::new();
+        builder = builder.append_field(Value::new(self.name.clone()));
+        builder = builder.append_field(Value::new(self.longname.clone()));
+        builder = builder.append_field(Value::new(self.description.clone()));
+        builder = builder.append_field(Value::new(self.language.clone()));
+        builder = builder.append_field(Value::new(self.license.clone()));
+        builder = builder.append_field(Value::new(self.author.clone()));
+        builder = builder.append_field(Value::new(self.icon.clone()));
+        builder = builder.append_field(Value::new(self.layout.clone()));
+        builder = builder.append_field(Value::Array(hotkeys_array));
+        builder = builder.append_field(Value::new(self.rank));
+        builder = builder.append_field(Value::new(self.symbol.clone()));
+        builder = builder.append_field(Value::new(self.setup.clone()));
+        builder = builder.append_field(Value::new(self.layout_variants.clone()));
+        builder = builder.append_field(Value::new(self.layout_option.clone()));
+        builder = builder.append_field(Value::new(self.version.clone()));
+        builder = builder.append_field(Value::new(self.text_domain.clone()));
+
+        let inner = Value::Structure(builder.build().unwrap());
+        wrap_serializable(Self::class_name(), inner)
+    }
+
+    fn from_value(_value: &Value<'_>) -> Result<Self> {
+        Err(Error::Connection(
+            "EngineDesc::from_value not implemented".into(),
+        ))
+    }
+}
+
+/// Implementation of `IBusSerializable` for `Component`.
+/// This maps the Rust structure to the D-Bus variant structure expected by IBus `RegisterComponent`.
+/// The signature required by IBus daemon is exactly `(sa{sv}ssssssssavas)`, where the first two fields
+/// are the class name and attachment dict provided by `wrap_serializable`.
+/// Note: The `watch_paths` array MUST precede the `engines` array to match the C side's decoding order.
+impl IBusSerializable for Component {
+    fn class_name() -> &'static str {
+        "IBusComponent"
+    }
+
+    fn to_value(&self) -> Value<'static> {
+        let mut watch_paths_array = Array::new(variant_signature());
+        for p in &self.watch_paths {
+            let observed_path = ObservedPath { path: p.as_str() };
+            watch_paths_array
+                .append(Value::Value(Box::new(observed_path.to_value())))
+                .unwrap();
+        }
+
+        let mut engines_array = Array::new(variant_signature());
+        for e in &self.engines {
+            engines_array
+                .append(Value::Value(Box::new(e.to_value())))
+                .unwrap();
+        }
+
+        let mut builder = zvariant::StructureBuilder::new();
+        builder = builder.append_field(Value::new(self.name.clone()));
+        builder = builder.append_field(Value::new(self.description.clone()));
+        builder = builder.append_field(Value::new(self.version.clone()));
+        builder = builder.append_field(Value::new(self.license.clone()));
+        builder = builder.append_field(Value::new(self.author.clone()));
+        builder = builder.append_field(Value::new(self.homepage.clone()));
+        builder = builder.append_field(Value::new(self.exec_path.clone()));
+        builder = builder.append_field(Value::new(self.text_domain.clone()));
+        builder = builder.append_field(Value::Array(watch_paths_array));
+        builder = builder.append_field(Value::Array(engines_array));
+
+        let inner = Value::Structure(builder.build().unwrap());
+        wrap_serializable(Self::class_name(), inner)
+    }
+
+    fn from_value(_value: &Value<'_>) -> Result<Self> {
+        Err(Error::Connection(
+            "Component::from_value not implemented".into(),
+        ))
+    }
+}
+
+/// Internal helper to serialize watch_paths into the `IBusObservedPath` GVariant format.
+struct ObservedPath<'a> {
+    path: &'a str,
+}
+
+impl<'a> IBusSerializable for ObservedPath<'a> {
+    fn class_name() -> &'static str {
+        "IBusObservedPath"
+    }
+
+    fn to_value(&self) -> Value<'static> {
+        let mut builder = zvariant::StructureBuilder::new();
+        builder = builder.append_field(Value::new(self.path.to_owned()));
+        // We intentionally mock mtime and file_hash_list to 0. The IBus daemon
+        // still sets up GFileMonitors for these paths.
+        builder = builder.append_field(Value::I64(0));
+        builder = builder.append_field(Value::U32(0));
+
+        let inner = Value::Structure(builder.build().unwrap());
+        wrap_serializable(Self::class_name(), inner)
+    }
+
+    fn from_value(_value: &Value<'_>) -> Result<Self> {
+        Err(Error::Connection(
+            "ObservedPath::from_value not implemented".into(),
+        ))
     }
 }

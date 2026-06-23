@@ -177,9 +177,9 @@ impl SimpleEngine {
 
 ## 4. GVariant Serialization & `IBusSerializable`
 
-Core IBus structures (`Text`, `Attr`, `AttrList`, `LookupTable`, `Prop`, `PropList`) implement the custom serialization layer conforming to GLib's `GVariant` format and the IBus wire format (`IBusSerializable`).
+Core IBus structures (`Component`, `EngineDesc`, `Text`, `Attr`, `AttrList`, `LookupTable`, `Prop`, `PropList`) implement the custom serialization layer conforming to GLib's `GVariant` format and the IBus wire format (`IBusSerializable`).
 
-* **Serialization Layout**: Structs are serialized as `(class_name, attachments, ...fields)` flat D-Bus structure tuples.
-* **Compatibility**: Works directly with GLib/GDBus-based `ibus-daemon` installations without referencing any external C libraries.
+* **Serialization Layout**: Structs are serialized as `(class_name, attachments, ...fields)` flat D-Bus structure tuples. For example, `Component` requires the exact signature `(sa{sv}ssssssssavas)`, carefully maintaining the correct order (`observed_paths` before `engines`), dynamically constructing internal structs (`IBusObservedPath`, `IBusEngineDesc`), and wrapping them in array variants (`av`) as strictly expected by the C implementation.
+* **Compatibility**: Works directly with GLib/GDBus-based `ibus-daemon` installations without referencing any external C libraries. The serialization logic has been heavily tested for full structural compatibility with the IBus D-Bus wire format.
 * **Optimization**: Signature parsing is cached using static/atomic initialization to maximize D-Bus message construction throughput.
 

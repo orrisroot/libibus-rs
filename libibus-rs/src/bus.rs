@@ -3,6 +3,7 @@ use crate::conn;
 use crate::dbus::IBusProxy;
 use crate::error::{Error, Result};
 use crate::input_context::InputContext;
+use crate::serializable::IBusSerializable;
 
 /// A client connection to the ibus-daemon.
 ///
@@ -67,7 +68,7 @@ impl Bus {
     pub async fn register_component(&self, component: &Component) -> Result<()> {
         let mut proxy = self.bus_proxy()?;
         proxy
-            .register_component(component.clone())
+            .register_component(&component.to_value())
             .await
             .map_err(|e| Error::Component(format!("Failed to register component: {}", e)))?;
         Ok(())
