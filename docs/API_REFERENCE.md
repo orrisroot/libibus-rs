@@ -87,7 +87,7 @@ pub trait EngineImpl: Send {
     async fn set_cursor_location(&mut self, x: i32, y: i32, w: i32, h: i32, handle: &EngineHandle) {}
 
     /// The content type of the focused input field changed.
-    async fn set_content_type(&mut self, hints: u32, purpose: u32, handle: &EngineHandle) {}
+    async fn set_content_type(&mut self, purpose: u32, hints: u32, handle: &EngineHandle) {}
 
     /// Surrounding text around the cursor was provided.
     async fn set_surrounding_text(&mut self, text: &str, cursor_pos: u32, anchor_pos: u32, handle: &EngineHandle) {}
@@ -131,7 +131,8 @@ impl EngineHandle {
     pub async fn commit_text(&self, text: impl Into<crate::text::Text>) -> zbus::Result<()>;
 
     /// Emit the UpdatePreeditText signal to show in‑line composition.
-    pub async fn update_preedit_text(&self, text: impl Into<crate::text::Text>, cursor_pos: u32, visible: bool) -> zbus::Result<()>;
+    /// `mode` controls preedit behavior on focus out (0 = clear, 1 = commit).
+    pub async fn update_preedit_text(&self, text: impl Into<crate::text::Text>, cursor_pos: u32, visible: bool, mode: u32) -> zbus::Result<()>;
 
     /// Hide or show the preedit interface.
     pub async fn show_preedit_text(&self) -> zbus::Result<()>;
@@ -238,6 +239,18 @@ impl LookupTable {
 
     /// Whether there are no candidates.
     pub fn is_empty(&self) -> bool;
+}
+```
+
+#### LookupOrientation
+
+Panel layout orientation for the lookup table.
+
+```rust
+pub enum LookupOrientation {
+    Horizontal = 0,
+    Vertical = 1,
+    System = 2,
 }
 ```
 
@@ -355,16 +368,16 @@ impl InputContext {
     /// Provide surrounding text around the cursor to the engine.
     pub async fn set_surrounding_text(&self, text: &str, cursor_pos: u32, anchor_pos: u32) -> Result<()>;
 
-    /// Set the content type (hints + purpose) of the input field.
-    pub async fn set_content_type(&self, hints: u32, purpose: u32) -> Result<()>;
+    /// Set the content type (purpose + hints) of the input field.
+    pub async fn set_content_type(&self, purpose: u32, hints: u32) -> Result<()>;
 
     /// Subscribe to the `commit-text` signal.
     pub async fn connect_commit_text<F>(&self, callback: F) -> Result<Subscription>
     where F: Fn(String) + Send + 'static;
 
-    /// Subscribe to the `update-preedit-text` signal.
+    /// Subscribe to the `update-preedit-text` signal (mode: 0=clear on focus out, 1=commit).
     pub async fn connect_update_preedit_text<F>(&self, callback: F) -> Result<Subscription>
-    where F: Fn(String, u32, bool) + Send + 'static;
+    where F: Fn(String, u32, bool, u32) + Send + 'static;
 
     /// Subscribe to the `show-preedit-text` signal.
     pub async fn connect_show_preedit_text<F>(&self, callback: F) -> Result<Subscription>
@@ -513,15 +526,15 @@ Text attributes for formatting (underline, foreground colour, background colour,
 
 ```rust
 pub enum AttrType {
-    Underline = 0,
-    Foreground = 1,
-    Background = 2,
-    FontStyle = 3,
-    FontWeight = 4,
-    Rise = 5,
-    Strikethrough = 6,
-    Scale = 7,
-    Align = 8,
+    Underline = 1,
+    Foreground = 2,
+    Background = 3,
+    FontStyle = 4,
+    FontWeight = 5,
+    Rise = 6,
+    Strikethrough = 7,
+    Scale = 8,
+    Align = 9,
 }
 
 pub struct Attr {
@@ -733,6 +746,7 @@ Core IBus structures (`Component`, `EngineDesc`, `Text`, `Attr`, `AttrList`, `Lo
 
 * **Serialization Layout**: Structs are serialized as `(class_name, attachments, ...fields)` flat D-Bus structure tuples. For example, `Component` uses the exact signature `(sa{sv}ssssssssavav)`, carefully maintaining field order (`observed_paths` before `engines`), dynamically constructing internal structs (`IBusObservedPath`, `IBusEngineDesc`), and wrapping them in array variants (`av`) as strictly expected by the C implementation.
 * **EngineDesc**: Hotkeys are serialized as a space-separated string. Includes `icon_prop_key` field for dynamic panel icons. Rank is serialized as `int32` per the IBus protocol.
+* **ObservedPath**: Serialized as `(path, mtime)` — matching the Python/C reference exactly (no extra fields).
 * **PropList**: Serialized as an array of IBusProperty structures (variant-wrapped). Uses a manual `Type` implementation to break the recursive `Prop ↔ Box<PropList>` cycle.
 * **Compatibility**: Works directly with GLib/GDBus-based `ibus-daemon` installations without referencing any external C libraries. The serialization logic has been verified for full structural compatibility with the IBus D-Bus wire format.
 * **Optimization**: Signature parsing is cached using static/atomic initialization to maximize D-Bus message construction throughput.
