@@ -43,15 +43,20 @@ impl EngineHandle {
     }
 
     /// Emit the `UpdatePreeditText` signal.
+    ///
+    /// `mode` controls preedit behavior when focus is lost:
+    /// - 0 (`PREEDIT_CLEAR`): Clear preedit text on focus out
+    /// - 1 (`PREEDIT_COMMIT`): Commit preedit text on focus out
     pub async fn update_preedit_text(
         &self,
         text: impl Into<crate::text::Text>,
         cursor_pos: u32,
         visible: bool,
+        mode: u32,
     ) -> zbus::Result<()> {
         let text_obj = text.into();
         let emitter = SignalEmitter::clone(&self.signal_ctxt);
-        Engine::update_preedit_text(&emitter, &text_obj.to_value(), cursor_pos, visible).await
+        Engine::update_preedit_text(&emitter, &text_obj.to_value(), cursor_pos, visible, mode).await
     }
 
     /// Emit the `ShowPreeditText` signal.

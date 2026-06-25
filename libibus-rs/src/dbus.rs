@@ -93,7 +93,7 @@ pub trait InputContext {
         anchor_pos: u32,
     ) -> zbus::Result<()>;
 
-    #[zbus(property)]
+    #[zbus(property, name = "ContentType")]
     fn set_content_type(&self, value: (u32, u32)) -> zbus::Result<()>;
 
     fn process_key_event(&self, keyval: u32, keycode: u32, state: u32) -> zbus::Result<bool>;
@@ -109,6 +109,7 @@ pub trait InputContext {
         text: zvariant::OwnedValue,
         cursor_pos: u32,
         visible: bool,
+        mode: u32,
     ) -> zbus::Result<()>;
 
     #[zbus(signal)]

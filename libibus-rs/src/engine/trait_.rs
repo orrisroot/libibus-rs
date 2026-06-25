@@ -56,7 +56,7 @@ pub trait EngineImpl: Send {
     }
 
     /// The content type of the focused input field changed.
-    async fn set_content_type(&mut self, _hints: u32, _purpose: u32, _handle: &EngineHandle) {}
+    async fn set_content_type(&mut self, _purpose: u32, _hints: u32, _handle: &EngineHandle) {}
 
     /// Surrounding text around the cursor was provided.
     async fn set_surrounding_text(

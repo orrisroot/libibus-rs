@@ -88,8 +88,9 @@ impl EngineImpl for DemoEngine {
                             log::warn!("hide_preedit_text failed: {}", e);
                         }
                     } else {
-                        if let Err(e) =
-                            handle.update_preedit_text(&self.preedit, self.preedit.len() as u32, true).await
+                        if let Err(e) = handle
+                            .update_preedit_text(&self.preedit, self.preedit.len() as u32, true, 0)
+                            .await
                         {
                             log::warn!("update_preedit_text failed: {}", e);
                         }
@@ -158,7 +159,8 @@ impl EngineImpl for DemoEngine {
             keysym::grave => {
                 self.aux_visible = !self.aux_visible;
                 if self.aux_visible {
-                    if let Err(e) = handle.update_auxiliary_text("変換モード (aux)", true).await {
+                    if let Err(e) = handle.update_auxiliary_text("変換モード (aux)", true).await
+                    {
                         log::warn!("update_auxiliary_text failed: {}", e);
                     }
                 } else {
@@ -181,8 +183,9 @@ impl EngineImpl for DemoEngine {
                 let kana = event.keyval - keysym::a;
                 let hira = char::from_u32(0x3042 + kana).unwrap_or('?');
                 self.preedit.push(hira);
-                if let Err(e) =
-                    handle.update_preedit_text(&self.preedit, self.preedit.len() as u32, true).await
+                if let Err(e) = handle
+                    .update_preedit_text(&self.preedit, self.preedit.len() as u32, true, 0)
+                    .await
                 {
                     log::warn!("update_preedit_text failed: {}", e);
                 }

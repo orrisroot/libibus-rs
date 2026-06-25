@@ -151,8 +151,8 @@ bitflags::bitflags! {
 /// }).await?;
 ///
 /// // Subscribe to preedit-text signal
-/// ic.connect_update_preedit_text(|text, cursor_pos, visible| {
-///     println!("Preedit: {} (cursor={}, visible={})", text, cursor_pos, visible);
+/// ic.connect_update_preedit_text(|text, cursor_pos, visible, mode| {
+///     println!("Preedit: {} (cursor={}, visible={}, mode={})", text, cursor_pos, visible, mode);
 /// }).await?;
 ///
 /// ic.focus_in().await?;
@@ -343,10 +343,10 @@ impl InputContext {
             .map_err(|e| Error::Engine(format!("set_surrounding_text failed: {}", e)))
     }
 
-    /// Set the content type (hints + purpose) of the input field.
+    /// Set the content type (purpose + hints) of the input field.
     ///
     /// Use [`Hint`] and [`Purpose`] for type-safe constants.
-    pub async fn set_content_type(&self, hints: u32, purpose: u32) -> Result<()> {
+    pub async fn set_content_type(&self, purpose: u32, hints: u32) -> Result<()> {
         let proxy = self.proxy.clone();
         proxy
             .set_content_type((purpose, hints))
@@ -388,7 +388,7 @@ impl InputContext {
     /// Returns a [`Subscription`] that cancels the handler when dropped.
     pub async fn connect_update_preedit_text<F>(&self, callback: F) -> Result<Subscription>
     where
-        F: Fn(String, u32, bool) + Send + 'static,
+        F: Fn(String, u32, bool, u32) + Send + 'static,
     {
         let proxy = self.proxy.clone();
         let stream = proxy.receive_update_preedit_text().await.map_err(|e| {
@@ -399,7 +399,7 @@ impl InputContext {
             if let Ok(args) = signal.args() {
                 let val = zvariant::Value::from(args.text);
                 if let Ok(text_obj) = Text::from_value(&val) {
-                    callback(text_obj.text, args.cursor_pos, args.visible);
+                    callback(text_obj.text, args.cursor_pos, args.visible, args.mode);
                 }
             }
         });

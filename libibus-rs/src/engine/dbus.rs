@@ -63,7 +63,7 @@ impl Engine {
     async fn set_content_type(&self, purpose: u32, hints: u32) -> zbus::fdo::Result<()> {
         let handle = self.handle.clone();
         let mut inner = self.inner.lock().await;
-        inner.set_content_type(hints, purpose, &handle).await;
+        inner.set_content_type(purpose, hints, &handle).await;
         Ok(())
     }
 
@@ -193,6 +193,7 @@ impl Engine {
         text: &zvariant::Value<'_>,
         cursor_pos: u32,
         visible: bool,
+        mode: u32,
     ) -> zbus::Result<()>;
 
     #[zbus(signal)]
