@@ -86,7 +86,7 @@ fn engine_to_xml(writer: &mut Writer<Vec<u8>>, engine: &EngineDesc) {
         element(writer, "layout", &engine.layout);
     }
     if !engine.hotkeys.is_empty() {
-        element(writer, "hotkeys", &engine.hotkeys.join(","));
+        element(writer, "hotkeys", &engine.hotkeys.join(";"));
     }
     element(writer, "rank", &engine.rank.to_string());
     if !engine.symbol.is_empty() {

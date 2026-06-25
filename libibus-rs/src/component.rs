@@ -251,7 +251,7 @@ impl IBusSerializable for EngineDesc {
     }
 
     fn to_value(&self) -> Value<'static> {
-        let hotkeys_str = self.hotkeys.join(" ");
+        let hotkeys_str = self.hotkeys.join(";");
 
         let mut builder = zvariant::StructureBuilder::new();
         builder = builder.append_field(Value::new(self.name.clone()));
@@ -262,7 +262,7 @@ impl IBusSerializable for EngineDesc {
         builder = builder.append_field(Value::new(self.author.clone()));
         builder = builder.append_field(Value::new(self.icon.clone()));
         builder = builder.append_field(Value::new(self.layout.clone()));
-        builder = builder.append_field(Value::new(self.rank as i32));
+        builder = builder.append_field(Value::new(self.rank));
         builder = builder.append_field(Value::new(hotkeys_str));
         builder = builder.append_field(Value::new(self.symbol.clone()));
         builder = builder.append_field(Value::new(self.setup.clone()));

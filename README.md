@@ -150,8 +150,8 @@ async fn main() -> libibus_rs::Result<()> {
         println!("Committed: {}", text);
     }).await?;
 
-    ic.connect_update_preedit_text(|text, cursor_pos, visible| {
-        println!("Preedit: {} (cursor={}, visible={})", text, cursor_pos, visible);
+    ic.connect_update_preedit_text(|text, cursor_pos, visible, mode| {
+        println!("Preedit: {} (cursor={}, visible={}, mode={})", text, cursor_pos, visible, mode);
     }).await?;
 
     ic.focus_in().await?;

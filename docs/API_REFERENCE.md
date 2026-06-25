@@ -234,6 +234,9 @@ impl LookupTable {
     /// Return a slice of candidates on the current page.
     pub fn current_page(&self) -> &[Text];
 
+    /// Set the cursor to a specific position within the current page.
+    pub fn set_cursor_pos_in_page(&mut self, pos: u32);
+
     /// Return the total number of candidates.
     pub fn number_of_candidates(&self) -> u32;
 
@@ -745,7 +748,7 @@ pub async fn register(conn: &Connection, impl_: Box<dyn FactoryImpl>) -> Result<
 Core IBus structures (`Component`, `EngineDesc`, `Text`, `Attr`, `AttrList`, `LookupTable`, `Prop`, `PropList`) implement the custom serialization layer conforming to GLib's `GVariant` format and the IBus wire format (`IBusSerializable`).
 
 * **Serialization Layout**: Structs are serialized as `(class_name, attachments, ...fields)` flat D-Bus structure tuples. For example, `Component` uses the exact signature `(sa{sv}ssssssssavav)`, carefully maintaining field order (`observed_paths` before `engines`), dynamically constructing internal structs (`IBusObservedPath`, `IBusEngineDesc`), and wrapping them in array variants (`av`) as strictly expected by the C implementation.
-* **EngineDesc**: Hotkeys are serialized as a space-separated string. Includes `icon_prop_key` field for dynamic panel icons. Rank is serialized as `int32` per the IBus protocol.
+* **EngineDesc**: Hotkeys are serialized as a semicolon-separated string matching the IBus protocol convention (e.g., `"Alt+space;Ctrl+Shift+F"`). Includes `icon_prop_key` field for dynamic panel icons. Rank is serialized as `uint32`.
 * **ObservedPath**: Serialized as `(path, mtime)` — matching the Python/C reference exactly (no extra fields).
 * **PropList**: Serialized as an array of IBusProperty structures (variant-wrapped). Uses a manual `Type` implementation to break the recursive `Prop ↔ Box<PropList>` cycle.
 * **Compatibility**: Works directly with GLib/GDBus-based `ibus-daemon` installations without referencing any external C libraries. The serialization logic has been verified for full structural compatibility with the IBus D-Bus wire format.
