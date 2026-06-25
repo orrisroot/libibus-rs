@@ -34,7 +34,7 @@ impl Panel {
 
     /// Notify the panel that the input context gained focus.
     pub async fn focus_in(&self) -> Result<()> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .focus_in()
             .await
@@ -43,7 +43,7 @@ impl Panel {
 
     /// Notify the panel that the input context lost focus.
     pub async fn focus_out(&self) -> Result<()> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .focus_out()
             .await
@@ -52,7 +52,7 @@ impl Panel {
 
     /// Reset the panel state.
     pub async fn reset(&self) -> Result<()> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .reset()
             .await

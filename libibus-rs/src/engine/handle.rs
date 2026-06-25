@@ -38,7 +38,8 @@ impl EngineHandle {
     /// Emit the `CommitText` signal.
     pub async fn commit_text(&self, text: impl Into<crate::text::Text>) -> zbus::Result<()> {
         let text_obj = text.into();
-        Engine::commit_text(&self.signal_ctxt, &text_obj.to_value()).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::commit_text(&emitter, &text_obj.to_value()).await
     }
 
     /// Emit the `UpdatePreeditText` signal.
@@ -49,18 +50,20 @@ impl EngineHandle {
         visible: bool,
     ) -> zbus::Result<()> {
         let text_obj = text.into();
-        Engine::update_preedit_text(&self.signal_ctxt, &text_obj.to_value(), cursor_pos, visible)
-            .await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::update_preedit_text(&emitter, &text_obj.to_value(), cursor_pos, visible).await
     }
 
     /// Emit the `ShowPreeditText` signal.
     pub async fn show_preedit_text(&self) -> zbus::Result<()> {
-        Engine::show_preedit_text(&self.signal_ctxt).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::show_preedit_text(&emitter).await
     }
 
     /// Emit the `HidePreeditText` signal.
     pub async fn hide_preedit_text(&self) -> zbus::Result<()> {
-        Engine::hide_preedit_text(&self.signal_ctxt).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::hide_preedit_text(&emitter).await
     }
 
     /// Emit the `UpdateLookupTable` signal.
@@ -69,17 +72,20 @@ impl EngineHandle {
         lookup_table: LookupTable,
         visible: bool,
     ) -> zbus::Result<()> {
-        Engine::update_lookup_table(&self.signal_ctxt, &lookup_table.to_value(), visible).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::update_lookup_table(&emitter, &lookup_table.to_value(), visible).await
     }
 
     /// Emit the `ShowLookupTable` signal.
     pub async fn show_lookup_table(&self) -> zbus::Result<()> {
-        Engine::show_lookup_table(&self.signal_ctxt).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::show_lookup_table(&emitter).await
     }
 
     /// Emit the `HideLookupTable` signal.
     pub async fn hide_lookup_table(&self) -> zbus::Result<()> {
-        Engine::hide_lookup_table(&self.signal_ctxt).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::hide_lookup_table(&emitter).await
     }
 
     /// Emit the `UpdateAuxiliaryText` signal.
@@ -89,27 +95,32 @@ impl EngineHandle {
         visible: bool,
     ) -> zbus::Result<()> {
         let text_obj = text.into();
-        Engine::update_auxiliary_text(&self.signal_ctxt, &text_obj.to_value(), visible).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::update_auxiliary_text(&emitter, &text_obj.to_value(), visible).await
     }
 
     /// Emit the `ShowAuxiliaryText` signal.
     pub async fn show_auxiliary_text(&self) -> zbus::Result<()> {
-        Engine::show_auxiliary_text(&self.signal_ctxt).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::show_auxiliary_text(&emitter).await
     }
 
     /// Emit the `HideAuxiliaryText` signal.
     pub async fn hide_auxiliary_text(&self) -> zbus::Result<()> {
-        Engine::hide_auxiliary_text(&self.signal_ctxt).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::hide_auxiliary_text(&emitter).await
     }
 
     /// Emit the `RegisterProperties` signal.
     pub async fn register_properties(&self, props: PropList) -> zbus::Result<()> {
-        Engine::register_properties(&self.signal_ctxt, &props.to_value()).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::register_properties(&emitter, &props.to_value()).await
     }
 
     /// Emit the `UpdateProperty` signal.
     pub async fn update_property(&self, prop: Prop) -> zbus::Result<()> {
-        Engine::update_property(&self.signal_ctxt, &prop.to_value()).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::update_property(&emitter, &prop.to_value()).await
     }
 
     /// Emit the `ForwardKeyEvent` signal.
@@ -119,7 +130,8 @@ impl EngineHandle {
         keycode: u32,
         state: u32,
     ) -> zbus::Result<()> {
-        Engine::forward_key_event(&self.signal_ctxt, keyval, keycode, state).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::forward_key_event(&emitter, keyval, keycode, state).await
     }
 
     /// Emit the `DeleteSurroundingText` signal.
@@ -132,27 +144,32 @@ impl EngineHandle {
         offset_from_cursor: i32,
         nchars: u32,
     ) -> zbus::Result<()> {
-        Engine::delete_surrounding_text(&self.signal_ctxt, offset_from_cursor, nchars).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::delete_surrounding_text(&emitter, offset_from_cursor, nchars).await
     }
 
     /// Emit the `PageUpLookupTable` signal.
     pub async fn page_up_lookup_table(&self) -> zbus::Result<()> {
-        Engine::page_up_lookup_table(&self.signal_ctxt).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::page_up_lookup_table(&emitter).await
     }
 
     /// Emit the `PageDownLookupTable` signal.
     pub async fn page_down_lookup_table(&self) -> zbus::Result<()> {
-        Engine::page_down_lookup_table(&self.signal_ctxt).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::page_down_lookup_table(&emitter).await
     }
 
     /// Emit the `CursorUpLookupTable` signal.
     pub async fn cursor_up_lookup_table(&self) -> zbus::Result<()> {
-        Engine::cursor_up_lookup_table(&self.signal_ctxt).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::cursor_up_lookup_table(&emitter).await
     }
 
     /// Emit the `CursorDownLookupTable` signal.
     pub async fn cursor_down_lookup_table(&self) -> zbus::Result<()> {
-        Engine::cursor_down_lookup_table(&self.signal_ctxt).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::cursor_down_lookup_table(&emitter).await
     }
 
     /// Emit the `RequireSurroundingText` signal.
@@ -160,6 +177,7 @@ impl EngineHandle {
     /// Requests the client to send surrounding text via `SetSurroundingText`.
     /// Useful when the engine needs context around the cursor for conversion.
     pub async fn require_surrounding_text(&self) -> zbus::Result<()> {
-        Engine::require_surrounding_text(&self.signal_ctxt).await
+        let emitter = SignalEmitter::clone(&self.signal_ctxt);
+        Engine::require_surrounding_text(&emitter).await
     }
 }

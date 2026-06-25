@@ -33,13 +33,12 @@ fn has_ibus_daemon() -> bool {
     let suffix_short = format!("-{}", display_num);
     for entry in entries.flatten() {
         let name = entry.file_name();
-        if let Some(s) = name.to_str() {
-            if s.starts_with(&format!("{}-unix-", display_num))
+        if let Some(s) = name.to_str()
+            && (s.starts_with(&format!("{}-unix-", display_num))
                 || s.ends_with(&suffix)
-                || s.ends_with(&suffix_short)
-            {
-                return true;
-            }
+                || s.ends_with(&suffix_short))
+        {
+            return true;
         }
     }
     false

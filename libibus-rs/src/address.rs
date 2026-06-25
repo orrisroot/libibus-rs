@@ -37,10 +37,10 @@ fn get_address_file_path(display_num: &str) -> Result<PathBuf> {
         for entry in entries.flatten() {
             let path = entry.path();
             // Reject symlinks and non-regular files to prevent symlink-based attacks
-            if let Ok(meta) = path.symlink_metadata() {
-                if !meta.is_file() {
-                    continue;
-                }
+            if let Ok(meta) = path.symlink_metadata()
+                && !meta.is_file()
+            {
+                continue;
             }
             if let Some(name) = path.file_name() {
                 let name = name.to_string_lossy();
@@ -105,7 +105,7 @@ fn parse_address(contents: &str) -> Result<Address> {
         } else if let Some(v) = line.strip_prefix("IBUS_ADDRESS=") {
             Some(("address", v))
         } else {
-            None
+            line.strip_prefix("IBUS_ADDRESS=").map(|v| ("address", v))
         };
 
         if let Some((key, value)) = val {
@@ -175,25 +175,25 @@ fn validate_socket_path(path: &str) -> Result<()> {
 }
 
 pub fn connect_address() -> Result<String> {
-    if let Ok(env_addr) = std::env::var("IBUS_ADDRESS") {
-        if !env_addr.is_empty() {
-            // Parse IBUS_ADDRESS directly (format: "unix:path=/path,guid=...")
-            if let Some(socket_path) = parse_unix_socket_path(&env_addr) {
-                if socket_path.starts_with('@') {
-                    return Ok(format!("unix:abstract={}", &socket_path[1..]));
-                } else {
-                    return Ok(format!("unix:path={}", socket_path));
-                }
+    if let Ok(env_addr) = std::env::var("IBUS_ADDRESS")
+        && !env_addr.is_empty()
+    {
+        // Parse IBUS_ADDRESS directly (format: "unix:path=/path,guid=...")
+        if let Some(socket_path) = parse_unix_socket_path(&env_addr) {
+            if let Some(stripped) = socket_path.strip_prefix('@') {
+                return Ok(format!("unix:abstract={}", stripped));
+            } else {
+                return Ok(format!("unix:path={}", socket_path));
             }
-            // If it's not a unix socket, return as-is
-            return Ok(env_addr);
         }
+        // If it's not a unix socket, return as-is
+        return Ok(env_addr);
     }
 
     let addr = read_ibus_address(None)?;
     if !addr.socket_path.is_empty() {
-        if addr.socket_path.starts_with('@') {
-            Ok(format!("unix:abstract={}", &addr.socket_path[1..]))
+        if let Some(stripped) = addr.socket_path.strip_prefix('@') {
+            Ok(format!("unix:abstract={}", stripped))
         } else {
             Ok(format!("unix:path={}", addr.socket_path))
         }

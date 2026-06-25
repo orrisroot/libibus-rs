@@ -230,7 +230,7 @@ impl InputContext {
     ///
     /// Returns `true` if the engine consumed the event.
     pub async fn process_key_event(&self, keyval: u32, keycode: u32, state: u32) -> Result<bool> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .process_key_event(keyval, keycode, state)
             .await
@@ -239,7 +239,7 @@ impl InputContext {
 
     /// Notify the engine that this input context gained focus.
     pub async fn focus_in(&self) -> Result<()> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .focus_in()
             .await
@@ -248,7 +248,7 @@ impl InputContext {
 
     /// Notify the engine that this input context lost focus.
     pub async fn focus_out(&self) -> Result<()> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .focus_out()
             .await
@@ -257,7 +257,7 @@ impl InputContext {
 
     /// Reset the engine state (clear preedit, lookup table, etc.).
     pub async fn reset(&self) -> Result<()> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .reset()
             .await
@@ -266,7 +266,7 @@ impl InputContext {
 
     /// Switch to a specific input method engine by name.
     pub async fn set_engine(&self, engine_name: &str) -> Result<()> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .set_engine(engine_name)
             .await
@@ -300,7 +300,7 @@ impl InputContext {
     ///
     /// Coordinates are relative to the root window.
     pub async fn set_cursor_location(&self, x: i32, y: i32, w: i32, h: i32) -> Result<()> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .set_cursor_location(x, y, w, h)
             .await
@@ -320,7 +320,7 @@ impl InputContext {
     /// # }
     /// ```
     pub async fn set_capabilities(&self, caps: Caps) -> Result<()> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .set_capabilities(caps.bits())
             .await
@@ -334,7 +334,7 @@ impl InputContext {
         cursor_pos: u32,
         anchor_pos: u32,
     ) -> Result<()> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         let text_obj = Text::new(text);
         let text_val = text_obj.to_value();
         proxy
@@ -347,7 +347,7 @@ impl InputContext {
     ///
     /// Use [`Hint`] and [`Purpose`] for type-safe constants.
     pub async fn set_content_type(&self, hints: u32, purpose: u32) -> Result<()> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .set_content_type((purpose, hints))
             .await

@@ -214,7 +214,7 @@ impl LookupTable {
             self.update_cursor_in_page();
             true
         } else if self.round && self.page_size > 0 {
-            let num_pages = (self.candidates.len() as u32 + self.page_size - 1) / self.page_size;
+            let num_pages = (self.candidates.len() as u32).div_ceil(self.page_size);
             if num_pages > 1 {
                 let last_page_start = (num_pages - 1) * self.page_size;
                 if last_page_start > 0 {

@@ -47,25 +47,25 @@ pub fn unwrap_serializable<'a>(value: &'a Value<'a>, expected_class: &str) -> Re
     }
     if let Value::Structure(struct_) = current {
         let fields = struct_.fields();
-        if fields.len() >= 2 {
-            if let Value::Str(class_name) = &fields[0] {
-                if class_name.as_str() == expected_class {
-                    if fields.len() == 3 {
-                        return Ok(fields[2].clone());
-                    } else {
-                        let mut builder = StructureBuilder::new();
-                        for field in &fields[2..] {
-                            builder = builder.append_field(field.clone());
-                        }
-                        return Ok(Value::Structure(builder.build().unwrap()));
-                    }
+        if fields.len() >= 2
+            && let Value::Str(class_name) = &fields[0]
+        {
+            if class_name.as_str() == expected_class {
+                if fields.len() == 3 {
+                    return Ok(fields[2].clone());
                 } else {
-                    return Err(Error::Connection(format!(
-                        "Expected class {}, got {}",
-                        expected_class,
-                        class_name.as_str()
-                    )));
+                    let mut builder = StructureBuilder::new();
+                    for field in &fields[2..] {
+                        builder = builder.append_field(field.clone());
+                    }
+                    return Ok(Value::Structure(builder.build().unwrap()));
                 }
+            } else {
+                return Err(Error::Connection(format!(
+                    "Expected class {}, got {}",
+                    expected_class,
+                    class_name.as_str()
+                )));
             }
         }
     }

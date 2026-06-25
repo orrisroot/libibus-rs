@@ -115,7 +115,10 @@ impl IBusSerializable for Text {
     }
 
     fn to_value(&self) -> Value<'static> {
-        let inner = Value::from((self.text.clone(), self.attrs.to_value()));
+        let inner = Value::from((
+            self.text.clone(),
+            Value::Value(Box::new(self.attrs.to_value())),
+        ));
         wrap_serializable(Self::class_name(), inner)
     }
 

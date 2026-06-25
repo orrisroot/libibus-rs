@@ -60,6 +60,8 @@ pub struct EngineDesc {
     pub version: String,
     /// Gettext text domain for translations.
     pub text_domain: String,
+    /// The key of IBusProperty for the dynamic panel icon.
+    pub icon_prop_key: String,
 }
 
 impl EngineDesc {
@@ -82,6 +84,7 @@ impl EngineDesc {
             layout_option: String::new(),
             version: "0.1.0".to_owned(),
             text_domain: String::new(),
+            icon_prop_key: String::new(),
         }
     }
 
@@ -248,10 +251,7 @@ impl IBusSerializable for EngineDesc {
     }
 
     fn to_value(&self) -> Value<'static> {
-        let mut hotkeys_array = Array::new(&zvariant::Signature::Str);
-        for h in &self.hotkeys {
-            hotkeys_array.append(Value::new(h.clone())).unwrap();
-        }
+        let hotkeys_str = self.hotkeys.join(" ");
 
         let mut builder = zvariant::StructureBuilder::new();
         builder = builder.append_field(Value::new(self.name.clone()));
@@ -262,14 +262,15 @@ impl IBusSerializable for EngineDesc {
         builder = builder.append_field(Value::new(self.author.clone()));
         builder = builder.append_field(Value::new(self.icon.clone()));
         builder = builder.append_field(Value::new(self.layout.clone()));
-        builder = builder.append_field(Value::Array(hotkeys_array));
-        builder = builder.append_field(Value::new(self.rank));
+        builder = builder.append_field(Value::new(self.rank as i32));
+        builder = builder.append_field(Value::new(hotkeys_str));
         builder = builder.append_field(Value::new(self.symbol.clone()));
         builder = builder.append_field(Value::new(self.setup.clone()));
         builder = builder.append_field(Value::new(self.layout_variants.clone()));
         builder = builder.append_field(Value::new(self.layout_option.clone()));
         builder = builder.append_field(Value::new(self.version.clone()));
         builder = builder.append_field(Value::new(self.text_domain.clone()));
+        builder = builder.append_field(Value::new(self.icon_prop_key.clone()));
 
         let inner = Value::Structure(builder.build().unwrap());
         wrap_serializable(Self::class_name(), inner)
@@ -308,6 +309,12 @@ impl IBusSerializable for Component {
                 .unwrap();
         }
 
+        let exec_str = if self.exec_args.is_empty() {
+            self.exec_path.clone()
+        } else {
+            format!("{} {}", self.exec_path, self.exec_args.join(" "))
+        };
+
         let mut builder = zvariant::StructureBuilder::new();
         builder = builder.append_field(Value::new(self.name.clone()));
         builder = builder.append_field(Value::new(self.description.clone()));
@@ -315,7 +322,7 @@ impl IBusSerializable for Component {
         builder = builder.append_field(Value::new(self.license.clone()));
         builder = builder.append_field(Value::new(self.author.clone()));
         builder = builder.append_field(Value::new(self.homepage.clone()));
-        builder = builder.append_field(Value::new(self.exec_path.clone()));
+        builder = builder.append_field(Value::new(exec_str));
         builder = builder.append_field(Value::new(self.text_domain.clone()));
         builder = builder.append_field(Value::Array(watch_paths_array));
         builder = builder.append_field(Value::Array(engines_array));
@@ -347,7 +354,7 @@ impl<'a> IBusSerializable for ObservedPath<'a> {
         // We intentionally mock mtime and file_hash_list to 0. The IBus daemon
         // still sets up GFileMonitors for these paths.
         builder = builder.append_field(Value::I64(0));
-        builder = builder.append_field(Value::U32(0));
+        builder = builder.append_field(Value::U64(0));
 
         let inner = Value::Structure(builder.build().unwrap());
         wrap_serializable(Self::class_name(), inner)

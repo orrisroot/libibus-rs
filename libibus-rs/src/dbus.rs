@@ -8,22 +8,22 @@ use zvariant::OwnedObjectPath;
     default_path = "/org/freedesktop/IBus"
 )]
 pub trait IBus {
-    fn hello(&mut self) -> zbus::Result<OwnedObjectPath>;
+    fn hello(&self) -> zbus::Result<OwnedObjectPath>;
 
-    fn create_input_context(&mut self, client_name: &str) -> zbus::Result<OwnedObjectPath>;
+    fn create_input_context(&self, client_name: &str) -> zbus::Result<OwnedObjectPath>;
 
-    fn register_component(&mut self, component: &zvariant::Value<'_>) -> zbus::Result<()>;
+    fn register_component(&self, component: &zvariant::Value<'_>) -> zbus::Result<()>;
 
-    fn get_address(&mut self) -> zbus::Result<String>;
+    fn get_address(&self) -> zbus::Result<String>;
 
     #[zbus(name = "SetGlobalEngine")]
-    fn set_global_engine_async(&mut self, engine_name: &str) -> zbus::Result<()>;
+    fn set_global_engine_async(&self, engine_name: &str) -> zbus::Result<()>;
 
     fn current_input_context(&self) -> zbus::Result<OwnedObjectPath>;
 
     fn name_owner(&self) -> zbus::Result<String>;
 
-    fn register_properties(&mut self, props: &zvariant::Value<'_>) -> zbus::Result<()>;
+    fn register_properties(&self, props: &zvariant::Value<'_>) -> zbus::Result<()>;
 }
 
 #[proxy(
@@ -31,9 +31,9 @@ pub trait IBus {
     default_service = "org.freedesktop.IBus"
 )]
 pub trait FactoryProxy {
-    fn create_engine(&mut self, engine_name: &str) -> zbus::Result<OwnedObjectPath>;
+    fn create_engine(&self, engine_name: &str) -> zbus::Result<OwnedObjectPath>;
 
-    fn destroy_engine(&mut self, engine_name: &str) -> zbus::Result<()>;
+    fn destroy_engine(&self, engine_name: &str) -> zbus::Result<()>;
 }
 
 #[proxy(
@@ -42,9 +42,9 @@ pub trait FactoryProxy {
     default_path = "/org/freedesktop/IBus/Panel"
 )]
 pub trait Panel {
-    fn focus_in(&mut self) -> zbus::Result<()>;
-    fn focus_out(&mut self) -> zbus::Result<()>;
-    fn reset(&mut self) -> zbus::Result<()>;
+    fn focus_in(&self) -> zbus::Result<()>;
+    fn focus_out(&self) -> zbus::Result<()>;
+    fn reset(&self) -> zbus::Result<()>;
 
     #[zbus(signal)]
     fn engine_activate(&self, engine_name: &str) -> zbus::Result<()>;
@@ -56,18 +56,14 @@ pub trait Panel {
     default_path = "/org/freedesktop/IBus/Config"
 )]
 pub trait Config {
-    fn get_value(&mut self, section: &str, name: &str) -> zbus::Result<zvariant::OwnedValue>;
+    fn get_value(&self, section: &str, name: &str) -> zbus::Result<zvariant::OwnedValue>;
 
-    fn set_value(
-        &mut self,
-        section: &str,
-        name: &str,
-        value: &zvariant::Value<'_>,
-    ) -> zbus::Result<()>;
+    fn set_value(&self, section: &str, name: &str, value: &zvariant::Value<'_>)
+    -> zbus::Result<()>;
 
-    fn unset(&mut self, section: &str, name: &str) -> zbus::Result<()>;
+    fn unset(&self, section: &str, name: &str) -> zbus::Result<()>;
 
-    fn get_values(&mut self, section: &str) -> zbus::Result<Vec<(String, zvariant::OwnedValue)>>;
+    fn get_values(&self, section: &str) -> zbus::Result<Vec<(String, zvariant::OwnedValue)>>;
 
     #[zbus(signal)]
     fn value_changed(
@@ -83,24 +79,24 @@ pub trait Config {
     default_service = "org.freedesktop.IBus"
 )]
 pub trait InputContext {
-    fn focus_in(&mut self) -> zbus::Result<()>;
-    fn focus_out(&mut self) -> zbus::Result<()>;
-    fn reset(&mut self) -> zbus::Result<()>;
-    fn set_engine(&mut self, engine_name: &str) -> zbus::Result<()>;
+    fn focus_in(&self) -> zbus::Result<()>;
+    fn focus_out(&self) -> zbus::Result<()>;
+    fn reset(&self) -> zbus::Result<()>;
+    fn set_engine(&self, engine_name: &str) -> zbus::Result<()>;
     fn get_engine(&self) -> zbus::Result<zvariant::OwnedValue>;
-    fn set_cursor_location(&mut self, x: i32, y: i32, w: i32, h: i32) -> zbus::Result<()>;
-    fn set_capabilities(&mut self, caps: u32) -> zbus::Result<()>;
+    fn set_cursor_location(&self, x: i32, y: i32, w: i32, h: i32) -> zbus::Result<()>;
+    fn set_capabilities(&self, caps: u32) -> zbus::Result<()>;
     fn set_surrounding_text(
-        &mut self,
+        &self,
         text: &zvariant::Value<'_>,
         cursor_pos: u32,
         anchor_pos: u32,
     ) -> zbus::Result<()>;
 
     #[zbus(property)]
-    fn set_content_type(&mut self, value: (u32, u32)) -> zbus::Result<()>;
+    fn set_content_type(&self, value: (u32, u32)) -> zbus::Result<()>;
 
-    fn process_key_event(&mut self, keyval: u32, keycode: u32, state: u32) -> zbus::Result<bool>;
+    fn process_key_event(&self, keyval: u32, keycode: u32, state: u32) -> zbus::Result<bool>;
 
     // --- Signals emitted by the engine (received by the client app) ---
 

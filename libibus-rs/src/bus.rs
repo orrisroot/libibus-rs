@@ -27,6 +27,12 @@ pub struct Bus {
     bus_proxy: Option<IBusProxy<'static>>,
 }
 
+impl Default for Bus {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Bus {
     /// Create a disconnected `Bus`.
     pub fn new() -> Self {
@@ -66,7 +72,7 @@ impl Bus {
 
     /// Register an input method component (and its engines) with the daemon.
     pub async fn register_component(&self, component: &Component) -> Result<()> {
-        let mut proxy = self.bus_proxy()?;
+        let proxy = self.bus_proxy()?;
         proxy
             .register_component(&component.to_value())
             .await
@@ -76,7 +82,7 @@ impl Bus {
 
     /// Return the address string of the ibus-daemon.
     pub async fn get_address(&self) -> Result<String> {
-        let mut proxy = self.bus_proxy()?;
+        let proxy = self.bus_proxy()?;
         proxy
             .get_address()
             .await
@@ -85,7 +91,7 @@ impl Bus {
 
     /// Switch the global input method engine.
     pub async fn set_global_engine(&self, engine_name: &str) -> Result<()> {
-        let mut proxy = self.bus_proxy()?;
+        let proxy = self.bus_proxy()?;
         proxy
             .set_global_engine_async(engine_name)
             .await
@@ -118,7 +124,7 @@ impl Bus {
     pub async fn create_input_context(&self, client_name: &str) -> Result<InputContext> {
         let conn = self.connection()?;
         let path = {
-            let mut proxy = self.bus_proxy()?;
+            let proxy = self.bus_proxy()?;
             proxy
                 .create_input_context(client_name)
                 .await

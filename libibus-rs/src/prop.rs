@@ -224,7 +224,7 @@ impl Prop {
 
     /// Attach sub-properties (for menu-type properties).
     pub fn set_sub_props(&mut self, sub_props: PropList) -> &mut Self {
-        self.sub_props = Box::new(sub_props);
+        *self.sub_props = sub_props;
         self
     }
 
@@ -265,11 +265,8 @@ pub struct PropList {
 }
 
 // Manual Type impl to break the Prop ↔ Box<PropList> ↔ PropList recursive cycle.
-// PropList in IBus is serialized as a{sv} (array of dict entries with string keys
-// and variant values).
-static PROP_LIST_ENTRY_SIG: Signature =
-    Signature::static_dict(&Signature::Str, &Signature::Variant);
-static PROP_LIST_SIG: Signature = Signature::static_array(&PROP_LIST_ENTRY_SIG);
+// PropList in IBus is serialized as an array of IBusProperty structures (v = variant).
+static PROP_LIST_SIG: Signature = Signature::static_array(&Signature::Variant);
 
 impl Type for PropList {
     const SIGNATURE: &'static Signature = &PROP_LIST_SIG;
@@ -320,10 +317,10 @@ impl PropList {
             if p.key == key {
                 return Some(p);
             }
-            if p.has_sub_props() {
-                if let Some(found) = p.sub_props.get(key) {
-                    return Some(found);
-                }
+            if p.has_sub_props()
+                && let Some(found) = p.sub_props.get(key)
+            {
+                return Some(found);
             }
         }
         None
@@ -348,10 +345,10 @@ impl IBusSerializable for Prop {
     }
 
     fn to_value(&self) -> Value<'static> {
-        let label_val = self.label.to_value();
-        let tooltip_val = self.tooltip.to_value();
-        let sub_props_val = self.sub_props.to_value();
-        let symbol_val = self.symbol.to_value();
+        let label_val = Value::Value(Box::new(self.label.to_value()));
+        let tooltip_val = Value::Value(Box::new(self.tooltip.to_value()));
+        let sub_props_val = Value::Value(Box::new(self.sub_props.to_value()));
+        let symbol_val = Value::Value(Box::new(self.symbol.to_value()));
 
         let inner = Value::from((
             self.key.clone(),

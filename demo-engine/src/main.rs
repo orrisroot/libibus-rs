@@ -30,6 +30,12 @@ pub struct DemoEngine {
     pub mode_checked: bool,
 }
 
+impl Default for DemoEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DemoEngine {
     pub fn new() -> Self {
         Self {
@@ -61,9 +67,15 @@ impl EngineImpl for DemoEngine {
         match event.keyval {
             keysym::Return | keysym::KP_Enter => {
                 if !self.preedit.is_empty() {
-                    handle.commit_text(&self.preedit).await.unwrap_or(());
-                    handle.hide_preedit_text().await.unwrap_or(());
-                    handle.hide_lookup_table().await.unwrap_or(());
+                    if let Err(e) = handle.commit_text(&self.preedit).await {
+                        log::warn!("commit_text failed: {}", e);
+                    }
+                    if let Err(e) = handle.hide_preedit_text().await {
+                        log::warn!("hide_preedit_text failed: {}", e);
+                    }
+                    if let Err(e) = handle.hide_lookup_table().await {
+                        log::warn!("hide_lookup_table failed: {}", e);
+                    }
                     self.preedit.clear();
                 }
                 true
@@ -72,12 +84,15 @@ impl EngineImpl for DemoEngine {
             keysym::BackSpace => {
                 if self.preedit.pop().is_some() {
                     if self.preedit.is_empty() {
-                        handle.hide_preedit_text().await.unwrap_or(());
+                        if let Err(e) = handle.hide_preedit_text().await {
+                            log::warn!("hide_preedit_text failed: {}", e);
+                        }
                     } else {
-                        handle
-                            .update_preedit_text(&self.preedit, self.preedit.len() as u32, true)
-                            .await
-                            .unwrap_or(());
+                        if let Err(e) =
+                            handle.update_preedit_text(&self.preedit, self.preedit.len() as u32, true).await
+                        {
+                            log::warn!("update_preedit_text failed: {}", e);
+                        }
                     }
                 }
                 true
@@ -85,9 +100,15 @@ impl EngineImpl for DemoEngine {
 
             keysym::Escape => {
                 self.preedit.clear();
-                handle.hide_preedit_text().await.unwrap_or(());
-                handle.hide_lookup_table().await.unwrap_or(());
-                handle.hide_auxiliary_text().await.unwrap_or(());
+                if let Err(e) = handle.hide_preedit_text().await {
+                    log::warn!("hide_preedit_text failed: {}", e);
+                }
+                if let Err(e) = handle.hide_lookup_table().await {
+                    log::warn!("hide_lookup_table failed: {}", e);
+                }
+                if let Err(e) = handle.hide_auxiliary_text().await {
+                    log::warn!("hide_auxiliary_text failed: {}", e);
+                }
                 true
             }
 
@@ -98,7 +119,9 @@ impl EngineImpl for DemoEngine {
                         table.append_candidate(Text::new(c));
                     }
                     table.set_orientation(libibus_rs::lookup_table::LookupOrientation::Horizontal);
-                    handle.update_lookup_table(table, true).await.unwrap_or(());
+                    if let Err(e) = handle.update_lookup_table(table, true).await {
+                        log::warn!("update_lookup_table failed: {}", e);
+                    }
                 }
                 true
             }
@@ -108,21 +131,26 @@ impl EngineImpl for DemoEngine {
                 // Demonstrate delete_surrounding_text: delete preedit length chars before cursor,
                 // then commit the selected candidate.
                 if !self.preedit.is_empty() {
-                    handle
+                    if let Err(e) = handle
                         .delete_surrounding_text(
                             -(self.preedit.len() as i32),
                             self.preedit.len() as u32,
                         )
                         .await
-                        .unwrap_or(());
+                    {
+                        log::warn!("delete_surrounding_text failed: {}", e);
+                    }
                     self.preedit.clear();
                 }
-                handle.hide_lookup_table().await.unwrap_or(());
-                handle
-                    .commit_text(&format!("候補{}", idx + 1))
-                    .await
-                    .unwrap_or(());
-                handle.hide_preedit_text().await.unwrap_or(());
+                if let Err(e) = handle.hide_lookup_table().await {
+                    log::warn!("hide_lookup_table failed: {}", e);
+                }
+                if let Err(e) = handle.commit_text(&format!("候補{}", idx + 1)).await {
+                    log::warn!("commit_text failed: {}", e);
+                }
+                if let Err(e) = handle.hide_preedit_text().await {
+                    log::warn!("hide_preedit_text failed: {}", e);
+                }
                 true
             }
 
@@ -130,30 +158,34 @@ impl EngineImpl for DemoEngine {
             keysym::grave => {
                 self.aux_visible = !self.aux_visible;
                 if self.aux_visible {
-                    handle
-                        .update_auxiliary_text("変換モード (aux)", true)
-                        .await
-                        .unwrap_or(());
+                    if let Err(e) = handle.update_auxiliary_text("変換モード (aux)", true).await {
+                        log::warn!("update_auxiliary_text failed: {}", e);
+                    }
                 } else {
-                    handle.hide_auxiliary_text().await.unwrap_or(());
+                    if let Err(e) = handle.hide_auxiliary_text().await {
+                        log::warn!("hide_auxiliary_text failed: {}", e);
+                    }
                 }
                 true
             }
 
             // Request surrounding text from the client
             keysym::asciitilde => {
-                handle.require_surrounding_text().await.unwrap_or(());
+                if let Err(e) = handle.require_surrounding_text().await {
+                    log::warn!("require_surrounding_text failed: {}", e);
+                }
                 true
             }
 
             keysym::a..=keysym::z => {
-                let kana = (event.keyval - keysym::a) as u32;
+                let kana = event.keyval - keysym::a;
                 let hira = char::from_u32(0x3042 + kana).unwrap_or('?');
                 self.preedit.push(hira);
-                handle
-                    .update_preedit_text(&self.preedit, self.preedit.len() as u32, true)
-                    .await
-                    .unwrap_or(());
+                if let Err(e) =
+                    handle.update_preedit_text(&self.preedit, self.preedit.len() as u32, true).await
+                {
+                    log::warn!("update_preedit_text failed: {}", e);
+                }
                 true
             }
 
@@ -162,7 +194,9 @@ impl EngineImpl for DemoEngine {
     }
 
     async fn focus_in(&mut self, handle: &EngineHandle) {
-        let _ = handle.show_preedit_text().await;
+        if let Err(e) = handle.show_preedit_text().await {
+            log::warn!("show_preedit_text failed: {}", e);
+        }
 
         // Register properties on focus
         let mut props = PropList::new();
@@ -183,19 +217,31 @@ impl EngineImpl for DemoEngine {
         info_prop.set_tooltip("libibus-rs demo engine");
         props.append(info_prop);
 
-        let _ = handle.register_properties(props).await;
+        if let Err(e) = handle.register_properties(props).await {
+            log::warn!("register_properties failed: {}", e);
+        }
     }
 
     async fn focus_out(&mut self, handle: &EngineHandle) {
-        let _ = handle.hide_preedit_text().await;
-        let _ = handle.hide_lookup_table().await;
-        let _ = handle.hide_auxiliary_text().await;
+        if let Err(e) = handle.hide_preedit_text().await {
+            log::warn!("hide_preedit_text failed: {}", e);
+        }
+        if let Err(e) = handle.hide_lookup_table().await {
+            log::warn!("hide_lookup_table failed: {}", e);
+        }
+        if let Err(e) = handle.hide_auxiliary_text().await {
+            log::warn!("hide_auxiliary_text failed: {}", e);
+        }
     }
 
     async fn reset(&mut self, handle: &EngineHandle) {
         self.preedit.clear();
-        let _ = handle.hide_preedit_text().await;
-        let _ = handle.hide_lookup_table().await;
+        if let Err(e) = handle.hide_preedit_text().await {
+            log::warn!("hide_preedit_text failed: {}", e);
+        }
+        if let Err(e) = handle.hide_lookup_table().await {
+            log::warn!("hide_lookup_table failed: {}", e);
+        }
     }
 
     /// Handle property activation from the panel.
@@ -205,17 +251,22 @@ impl EngineImpl for DemoEngine {
                 self.mode_checked = prop_state == PropState::Checked as u32;
                 let mut prop = Prop::toggle("mode", "変換");
                 prop.set_state(prop_state.into());
-                let _ = handle.update_property(prop).await;
+                if let Err(e) = handle.update_property(prop).await {
+                    log::warn!("update_property failed: {}", e);
+                }
             }
             "info" => {
                 // Show auxiliary text as a response to info button
                 self.aux_visible = true;
-                let _ = handle
+                if let Err(e) = handle
                     .update_auxiliary_text(
                         "libibus-rs demo — https://github.com/orrisroot/libibus-rs",
                         true,
                     )
-                    .await;
+                    .await
+                {
+                    log::warn!("update_auxiliary_text failed: {}", e);
+                }
             }
             _ => {}
         }
@@ -230,9 +281,15 @@ impl EngineImpl for DemoEngine {
         handle: &EngineHandle,
     ) {
         let candidate = format!("候補{}", index + 1);
-        let _ = handle.commit_text(&candidate).await;
-        let _ = handle.hide_lookup_table().await;
-        let _ = handle.hide_preedit_text().await;
+        if let Err(e) = handle.commit_text(&candidate).await {
+            log::warn!("commit_text failed: {}", e);
+        }
+        if let Err(e) = handle.hide_lookup_table().await {
+            log::warn!("hide_lookup_table failed: {}", e);
+        }
+        if let Err(e) = handle.hide_preedit_text().await {
+            log::warn!("hide_preedit_text failed: {}", e);
+        }
         self.preedit.clear();
     }
 

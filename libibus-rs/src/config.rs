@@ -36,7 +36,7 @@ impl Config {
 
     /// Get a raw configuration value.
     pub async fn get_value(&self, section: &str, name: &str) -> Result<OwnedValue> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .get_value(section, name)
             .await
@@ -93,7 +93,7 @@ impl Config {
         name: &str,
         value: &zvariant::Value<'_>,
     ) -> Result<()> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .set_value(section, name, value)
             .await
@@ -102,7 +102,7 @@ impl Config {
 
     /// Unset a configuration value.
     pub async fn unset(&self, section: &str, name: &str) -> Result<()> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .unset(section, name)
             .await
@@ -111,7 +111,7 @@ impl Config {
 
     /// Get all key-value pairs in a section.
     pub async fn get_values(&self, section: &str) -> Result<Vec<(String, OwnedValue)>> {
-        let mut proxy = self.proxy.clone();
+        let proxy = self.proxy.clone();
         proxy
             .get_values(section)
             .await
