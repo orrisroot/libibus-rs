@@ -205,10 +205,10 @@ fn test_attr_list() {
 
 #[test]
 fn test_attr_type_conversion() {
-    assert_eq!(AttrType::Underline.to_u32(), 0);
-    assert_eq!(AttrType::Foreground.to_u32(), 1);
-    assert_eq!(AttrType::Background.to_u32(), 2);
-    assert!(AttrType::from_u32(0) == Some(AttrType::Underline));
+    assert_eq!(AttrType::Underline.to_u32(), 1);
+    assert_eq!(AttrType::Foreground.to_u32(), 2);
+    assert_eq!(AttrType::Background.to_u32(), 3);
+    assert!(AttrType::from_u32(1) == Some(AttrType::Underline));
     assert!(AttrType::from_u32(99).is_none());
 }
 
@@ -576,7 +576,7 @@ async fn test_subscription_manual_cancel() {
         .expect("create input context");
 
     let mut sub = ic
-        .connect_update_preedit_text(|_text, _cursor, _visible| {})
+        .connect_update_preedit_text(|_text, _cursor, _visible, _mode| {})
         .await
         .expect("subscribe");
 

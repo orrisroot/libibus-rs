@@ -10,6 +10,8 @@ pub enum LookupOrientation {
     Horizontal = 0,
     /// Vertical layout.
     Vertical = 1,
+    /// System default orientation.
+    System = 2,
 }
 
 impl LookupOrientation {
@@ -17,12 +19,17 @@ impl LookupOrientation {
         self as u32
     }
 
-    pub const fn from_u32(v: u32) -> Option<Self> {
+    pub const fn from_i32(v: i32) -> Option<Self> {
         match v {
             0 => Some(Self::Horizontal),
             1 => Some(Self::Vertical),
+            2 => Some(Self::System),
             _ => None,
         }
+    }
+
+    pub const fn from_u32(v: u32) -> Option<Self> {
+        Self::from_i32(v as i32)
     }
 }
 
@@ -66,8 +73,8 @@ pub struct LookupTable {
     cursor_visible: bool,
     /// Whether to wrap around at the start/end of the list.
     round: bool,
-    /// Layout orientation (see `ORIENTATION_*` constants).
-    orientation: u32,
+    /// Layout orientation (0=Horizontal, 1=Vertical, 2=System).
+    orientation: i32,
     /// Number of candidates per page.
     page_size: u32,
     /// Cursor position within the current page.
@@ -82,7 +89,7 @@ impl Default for LookupTable {
             cursor_pos: 0,
             cursor_visible: true,
             round: false,
-            orientation: LookupOrientation::Vertical as u32,
+            orientation: LookupOrientation::System as i32,
             page_size: 5,
             cursor_pos_in_page: 0,
         }
@@ -159,7 +166,7 @@ impl LookupTable {
 
     /// Return the orientation of the lookup table.
     pub fn orientation(&self) -> LookupOrientation {
-        LookupOrientation::from_u32(self.orientation).unwrap_or(LookupOrientation::Vertical)
+        LookupOrientation::from_i32(self.orientation).unwrap_or(LookupOrientation::Vertical)
     }
 
     /// Return the cursor position within the current page.
@@ -186,7 +193,7 @@ impl LookupTable {
 
     /// Set the panel layout orientation.
     pub fn set_orientation(&mut self, orientation: LookupOrientation) {
-        self.orientation = orientation as u32;
+        self.orientation = orientation as i32;
     }
 
     /// Enable or disable wrapping at list boundaries.
@@ -355,7 +362,7 @@ impl IBusSerializable for LookupTable {
             self.cursor_pos,
             self.cursor_visible,
             self.round,
-            self.orientation as i32,
+            self.orientation,
             cands,
             labels,
         ));
@@ -383,11 +390,10 @@ impl IBusSerializable for LookupTable {
                     .clone()
                     .try_into()
                     .map_err(|e| Error::Connection(format!("Invalid round: {}", e)))?;
-                let orientation_i32: i32 = fields[4]
+                let orientation: i32 = fields[4]
                     .clone()
                     .try_into()
                     .map_err(|e| Error::Connection(format!("Invalid orientation: {}", e)))?;
-                let orientation = orientation_i32 as u32;
 
                 let cands_val = if let Value::Value(v) = &fields[5] {
                     v.as_ref()

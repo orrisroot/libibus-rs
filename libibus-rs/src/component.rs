@@ -351,10 +351,8 @@ impl<'a> IBusSerializable for ObservedPath<'a> {
     fn to_value(&self) -> Value<'static> {
         let mut builder = zvariant::StructureBuilder::new();
         builder = builder.append_field(Value::new(self.path.to_owned()));
-        // We intentionally mock mtime and file_hash_list to 0. The IBus daemon
-        // still sets up GFileMonitors for these paths.
+        // mtime is set to 0. The IBus daemon still sets up GFileMonitors for these paths.
         builder = builder.append_field(Value::I64(0));
-        builder = builder.append_field(Value::U64(0));
 
         let inner = Value::Structure(builder.build().unwrap());
         wrap_serializable(Self::class_name(), inner)

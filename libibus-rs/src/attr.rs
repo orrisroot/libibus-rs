@@ -7,38 +7,38 @@ use zvariant::Type;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub enum AttrType {
     /// Underline style.
-    Underline = 0,
+    Underline = 1,
     /// Foreground colour (ABGR).
-    Foreground = 1,
+    Foreground = 2,
     /// Background colour (ABGR).
-    Background = 2,
+    Background = 3,
     /// Font style (CSS-like string).
-    FontStyle = 3,
+    FontStyle = 4,
     /// Font weight.
-    FontWeight = 4,
+    FontWeight = 5,
     /// Rise (vertical offset in pixels).
-    Rise = 5,
+    Rise = 6,
     /// Strikethrough.
-    Strikethrough = 6,
+    Strikethrough = 7,
     /// Font scale factor (percent × 100, e.g. 200 = 2×).
-    Scale = 7,
+    Scale = 8,
     /// Text alignment.
-    Align = 8,
+    Align = 9,
 }
 
 impl AttrType {
     /// Convert a `u32` to an `AttrType`, returning `None` for unknown values.
     pub fn from_u32(v: u32) -> Option<Self> {
         match v {
-            0 => Some(Self::Underline),
-            1 => Some(Self::Foreground),
-            2 => Some(Self::Background),
-            3 => Some(Self::FontStyle),
-            4 => Some(Self::FontWeight),
-            5 => Some(Self::Rise),
-            6 => Some(Self::Strikethrough),
-            7 => Some(Self::Scale),
-            8 => Some(Self::Align),
+            1 => Some(Self::Underline),
+            2 => Some(Self::Foreground),
+            3 => Some(Self::Background),
+            4 => Some(Self::FontStyle),
+            5 => Some(Self::FontWeight),
+            6 => Some(Self::Rise),
+            7 => Some(Self::Strikethrough),
+            8 => Some(Self::Scale),
+            9 => Some(Self::Align),
             _ => None,
         }
     }
