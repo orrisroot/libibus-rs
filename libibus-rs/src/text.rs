@@ -115,10 +115,11 @@ impl IBusSerializable for Text {
     }
 
     fn to_value(&self) -> Value<'static> {
-        let inner = Value::from((
-            self.text.clone(),
-            Value::Value(Box::new(self.attrs.to_value())),
-        ));
+        use zvariant::StructureBuilder;
+        let mut builder = StructureBuilder::new();
+        builder = builder.append_field(Value::from(self.text.clone()));
+        builder = builder.append_field(Value::Value(Box::new(self.attrs.to_value())));
+        let inner = Value::Structure(builder.build().unwrap());
         wrap_serializable(Self::class_name(), inner)
     }
 

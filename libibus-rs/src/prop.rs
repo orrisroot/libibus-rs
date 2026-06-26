@@ -345,23 +345,24 @@ impl IBusSerializable for Prop {
     }
 
     fn to_value(&self) -> Value<'static> {
+        use zvariant::StructureBuilder;
         let label_val = Value::Value(Box::new(self.label.to_value()));
         let tooltip_val = Value::Value(Box::new(self.tooltip.to_value()));
         let sub_props_val = Value::Value(Box::new(self.sub_props.to_value()));
         let symbol_val = Value::Value(Box::new(self.symbol.to_value()));
 
-        let inner = Value::from((
-            self.key.clone(),
-            self.prop_type,
-            label_val,
-            self.icon.clone(),
-            tooltip_val,
-            self.sensitive,
-            self.visible,
-            self.state,
-            sub_props_val,
-            symbol_val,
-        ));
+        let mut builder = StructureBuilder::new();
+        builder = builder.append_field(Value::from(self.key.clone()));
+        builder = builder.append_field(Value::from(self.prop_type));
+        builder = builder.append_field(label_val);
+        builder = builder.append_field(Value::from(self.icon.clone()));
+        builder = builder.append_field(tooltip_val);
+        builder = builder.append_field(Value::from(self.sensitive));
+        builder = builder.append_field(Value::from(self.visible));
+        builder = builder.append_field(Value::from(self.state));
+        builder = builder.append_field(sub_props_val);
+        builder = builder.append_field(symbol_val);
+        let inner = Value::Structure(builder.build().unwrap());
         wrap_serializable(Self::class_name(), inner)
     }
 

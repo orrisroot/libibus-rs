@@ -357,15 +357,16 @@ impl IBusSerializable for LookupTable {
         }
         let labels = Value::Array(label_array);
 
-        let inner = Value::from((
-            self.page_size,
-            self.cursor_pos,
-            self.cursor_visible,
-            self.round,
-            self.orientation,
-            cands,
-            labels,
-        ));
+        use zvariant::StructureBuilder;
+        let mut builder = StructureBuilder::new();
+        builder = builder.append_field(Value::from(self.page_size));
+        builder = builder.append_field(Value::from(self.cursor_pos));
+        builder = builder.append_field(Value::from(self.cursor_visible));
+        builder = builder.append_field(Value::from(self.round));
+        builder = builder.append_field(Value::from(self.orientation));
+        builder = builder.append_field(cands);
+        builder = builder.append_field(labels);
+        let inner = Value::Structure(builder.build().unwrap());
         wrap_serializable(Self::class_name(), inner)
     }
 

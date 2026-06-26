@@ -4,7 +4,6 @@ use crate::engine::descriptor::Engine;
 use crate::lookup_table::LookupTable;
 use crate::prop::{Prop, PropList};
 use crate::serializable::IBusSerializable;
-
 /// Handle for emitting IBus engine signals.
 ///
 /// The library provides an `EngineHandle` as a borrowed parameter in all
