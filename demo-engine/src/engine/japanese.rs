@@ -12,23 +12,49 @@ impl DemoEngine {
     ) -> bool {
         match event.keyval {
             keysym::Return | keysym::KP_Enter => {
+                if let Some(ref table) = self.lookup_table {
+                    if let Some(candidate) = table.get_current_candidate() {
+                        let text = candidate.text.clone();
+                        self.lookup_table.take();
+                        self.preedit.clear();
+                        if let Err(e) = handle.commit_text(&text).await {
+                            log::warn!("commit_text failed: {}", e);
+                        }
+                        if let Err(e) = handle.hide_lookup_table().await {
+                            log::warn!("hide_lookup_table failed: {}", e);
+                        }
+                        if let Err(e) = handle.hide_preedit_text().await {
+                            log::warn!("hide_preedit_text failed: {}", e);
+                        }
+                        return true;
+                    }
+                }
                 if !self.preedit.is_empty() {
                     self.commit_and_clear_preedit(handle).await;
+                    return true;
                 }
-                true
+                false
             }
 
             keysym::BackSpace => {
-                if self.preedit.pop().is_some() {
+                if !self.preedit.is_empty() {
+                    self.preedit.pop();
                     if self.preedit.is_empty() {
                         if let Err(e) = handle.hide_preedit_text().await {
                             log::warn!("hide_preedit_text failed: {}", e);
                         }
+                        if let Err(e) = handle.hide_lookup_table().await {
+                            log::warn!("hide_lookup_table failed: {}", e);
+                        }
                     } else {
                         self.update_preedit(handle).await;
                     }
+                    return true;
                 }
-                true
+                if self.lookup_table.is_some() {
+                    return true;
+                }
+                false
             }
 
             keysym::Escape => {
@@ -52,11 +78,37 @@ impl DemoEngine {
                         table.append_candidate(Text::new(c));
                     }
                     table.set_orientation(libibus_rs::lookup_table::LookupOrientation::Horizontal);
+                    table.set_round(true);
+                    self.lookup_table = Some(table.clone());
                     if let Err(e) = handle.update_lookup_table(table, true).await {
                         log::warn!("update_lookup_table failed: {}", e);
                     }
                 }
                 true
+            }
+
+            keysym::Right => {
+                if let Some(ref mut table) = self.lookup_table {
+                    if table.cursor_down() {
+                        if let Err(e) = handle.update_lookup_table(table.clone(), true).await {
+                            log::warn!("update_lookup_table failed: {}", e);
+                        }
+                    }
+                    return true;
+                }
+                false
+            }
+
+            keysym::Left => {
+                if let Some(ref mut table) = self.lookup_table {
+                    if table.cursor_up() {
+                        if let Err(e) = handle.update_lookup_table(table.clone(), true).await {
+                            log::warn!("update_lookup_table failed: {}", e);
+                        }
+                    }
+                    return true;
+                }
+                false
             }
 
             keysym::_1..=keysym::_9 => {
@@ -111,6 +163,11 @@ impl DemoEngine {
                 let kana = event.keyval - keysym::a;
                 let hira = char::from_u32(0x3042 + kana).unwrap_or('?');
                 self.preedit.push(hira);
+                if !self.preedit.is_empty() {
+                    if let Err(e) = handle.show_preedit_text().await {
+                        log::warn!("show_preedit_text failed: {}", e);
+                    }
+                }
                 self.update_preedit(handle).await;
                 true
             }

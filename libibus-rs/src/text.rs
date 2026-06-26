@@ -119,6 +119,7 @@ impl IBusSerializable for Text {
         let mut builder = StructureBuilder::new();
         builder = builder.append_field(Value::from(self.text.clone()));
         builder = builder.append_field(Value::Value(Box::new(self.attrs.to_value())));
+        builder = builder.append_field(Value::from(self.cursor_pos));
         let inner = Value::Structure(builder.build().unwrap());
         wrap_serializable(Self::class_name(), inner)
     }

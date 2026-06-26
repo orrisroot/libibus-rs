@@ -4,11 +4,9 @@ pub mod japanese;
 use libibus_rs::engine::EngineImpl;
 use libibus_rs::error::Result;
 use libibus_rs::factory::FactoryImpl;
-use libibus_rs::prop::{Prop, PropList, PropState};
-use libibus_rs::{EngineHandle, KeyEvent};
-
-#[cfg(test)]
-use libibus_rs::ModifierType;
+use libibus_rs::key::ModifierType;
+use libibus_rs::prop::{Prop, PropList, PropState, PropType};
+use libibus_rs::{EngineHandle, KeyEvent, LookupTable};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum InputMode {
@@ -16,33 +14,13 @@ pub enum InputMode {
     English,
 }
 
-impl InputMode {
-    fn symbol(&self) -> &'static str {
-        match self {
-            InputMode::Japanese => "あ",
-            InputMode::English => "EN",
-        }
-    }
-
-    fn tooltip(&self) -> &'static str {
-        match self {
-            InputMode::Japanese => "日本語入力モード",
-            InputMode::English => "English input mode",
-        }
-    }
-
-    fn toggle(&self) -> Self {
-        match self {
-            InputMode::Japanese => InputMode::English,
-            InputMode::English => InputMode::Japanese,
-        }
-    }
-}
+impl InputMode {}
 
 pub struct DemoEngine {
     pub preedit: String,
     pub aux_visible: bool,
     pub mode: InputMode,
+    pub lookup_table: Option<LookupTable>,
 }
 
 impl Default for DemoEngine {
@@ -57,19 +35,47 @@ impl DemoEngine {
             preedit: String::new(),
             aux_visible: false,
             mode: InputMode::Japanese,
+            lookup_table: None,
         }
     }
 
-    fn mode_prop(&self) -> Prop {
-        let symbol = self.mode.symbol();
-        let mut prop = Prop::toggle("mode", symbol);
-        prop.set_tooltip(self.mode.tooltip());
-        prop.set_icon("ibus-mode-indicator");
-        prop.set_state(match self.mode {
-            InputMode::Japanese => PropState::Checked,
-            InputMode::English => PropState::Unchecked,
+    fn mode_menu_prop(&self) -> Prop {
+        let mut menu = Prop::new("mode", "Input Mode");
+        menu.prop_type = PropType::Menu as u32;
+        menu.set_icon(match self.mode {
+            InputMode::Japanese => "ibus-keyboard-jp",
+            InputMode::English => "ibus-keyboard-us",
         });
-        prop
+
+        let japanese_prop = {
+            let mut p = Prop::radio("mode_japanese", "Japanese");
+            p.set_symbol("あ");
+            p.set_tooltip("日本語入力モード");
+            p.set_state(if self.mode == InputMode::Japanese {
+                PropState::Checked
+            } else {
+                PropState::Unchecked
+            });
+            p
+        };
+
+        let english_prop = {
+            let mut p = Prop::radio("mode_english", "English");
+            p.set_symbol("EN");
+            p.set_tooltip("English input mode");
+            p.set_state(if self.mode == InputMode::English {
+                PropState::Checked
+            } else {
+                PropState::Unchecked
+            });
+            p
+        };
+
+        let mut sub_props = PropList::new();
+        sub_props.append(japanese_prop);
+        sub_props.append(english_prop);
+        menu.set_sub_props(sub_props);
+        menu
     }
 
     pub(super) async fn commit_and_clear_preedit(&mut self, handle: &EngineHandle) {
@@ -104,6 +110,39 @@ pub fn should_ignore_key(event: &KeyEvent) -> bool {
 #[async_trait::async_trait]
 impl EngineImpl for DemoEngine {
     async fn process_key_event(&mut self, event: &KeyEvent, handle: &EngineHandle) -> bool {
+        if event.modifiers() == ModifierType::CONTROL && event.keyval == libibus_rs::key::keysym::space {
+            self.mode = match self.mode {
+                InputMode::Japanese => InputMode::English,
+                InputMode::English => InputMode::Japanese,
+            };
+            self.preedit.clear();
+
+            if let Err(e) = handle.hide_preedit_text().await {
+                log::warn!("hide_preedit_text failed: {}", e);
+            }
+            if let Err(e) = handle.hide_lookup_table().await {
+                log::warn!("hide_lookup_table failed: {}", e);
+            }
+
+            let mut props = PropList::new();
+            props.append({
+                let mut p = Prop::new("setup", "Setup");
+                p.set_visible(true);
+                p
+            });
+            props.append(self.mode_menu_prop());
+            if let Err(e) = handle.register_properties(props).await {
+                log::warn!("register_properties failed: {}", e);
+            }
+
+            if self.mode == InputMode::Japanese {
+                if let Err(e) = handle.show_preedit_text().await {
+                    log::warn!("show_preedit_text failed: {}", e);
+                }
+            }
+            return true;
+        }
+
         if should_ignore_key(event) {
             return false;
         }
@@ -127,11 +166,7 @@ impl EngineImpl for DemoEngine {
             p.set_visible(true);
             p
         });
-        props.append({
-            let mut p = Prop::new("mode", "あ");
-            p.set_visible(true);
-            p
-        });
+        props.append(self.mode_menu_prop());
         handle.register_properties(props).await.ok();
     }
 
@@ -149,6 +184,7 @@ impl EngineImpl for DemoEngine {
 
     async fn reset(&mut self, handle: &EngineHandle) {
         self.preedit.clear();
+        self.lookup_table.take();
         if let Err(e) = handle.hide_preedit_text().await {
             log::warn!("hide_preedit_text failed: {}", e);
         }
@@ -164,8 +200,11 @@ impl EngineImpl for DemoEngine {
         handle: &EngineHandle,
     ) {
         match prop_name {
-            "mode" => {
-                self.mode = self.mode.toggle();
+            "mode_japanese" => {
+                if self.mode == InputMode::Japanese {
+                    return;
+                }
+                self.mode = InputMode::Japanese;
                 self.preedit.clear();
 
                 if let Err(e) = handle.hide_preedit_text().await {
@@ -175,14 +214,40 @@ impl EngineImpl for DemoEngine {
                     log::warn!("hide_lookup_table failed: {}", e);
                 }
 
-                if let Err(e) = handle.update_property(self.mode_prop()).await {
-                    log::warn!("update_property failed: {}", e);
+                let mut props = PropList::new();
+                props.append({
+                    let mut p = Prop::new("setup", "Setup");
+                    p.set_visible(true);
+                    p
+                });
+                props.append(self.mode_menu_prop());
+                if let Err(e) = handle.register_properties(props).await {
+                    log::warn!("register_properties failed: {}", e);
+                }
+            }
+            "mode_english" => {
+                if self.mode == InputMode::English {
+                    return;
+                }
+                self.mode = InputMode::English;
+                self.preedit.clear();
+
+                if let Err(e) = handle.hide_preedit_text().await {
+                    log::warn!("hide_preedit_text failed: {}", e);
+                }
+                if let Err(e) = handle.hide_lookup_table().await {
+                    log::warn!("hide_lookup_table failed: {}", e);
                 }
 
-                if self.mode == InputMode::Japanese {
-                    if let Err(e) = handle.show_preedit_text().await {
-                        log::warn!("show_preedit_text failed: {}", e);
-                    }
+                let mut props = PropList::new();
+                props.append({
+                    let mut p = Prop::new("setup", "Setup");
+                    p.set_visible(true);
+                    p
+                });
+                props.append(self.mode_menu_prop());
+                if let Err(e) = handle.register_properties(props).await {
+                    log::warn!("register_properties failed: {}", e);
                 }
             }
             "info" => {
@@ -228,6 +293,7 @@ impl EngineImpl for DemoEngine {
 
     async fn destroy(&mut self, _handle: &EngineHandle) {
         self.preedit.clear();
+        self.lookup_table.take();
     }
 }
 
@@ -261,18 +327,6 @@ pub(crate) async fn create_test_handle() -> Option<EngineHandle> {
 mod tests {
     use super::*;
     use libibus_rs::key::keysym;
-
-    #[test]
-    fn test_input_mode_toggle() {
-        assert_eq!(InputMode::Japanese.toggle(), InputMode::English);
-        assert_eq!(InputMode::English.toggle(), InputMode::Japanese);
-    }
-
-    #[test]
-    fn test_input_mode_symbol() {
-        assert_eq!(InputMode::Japanese.symbol(), "あ");
-        assert_eq!(InputMode::English.symbol(), "EN");
-    }
 
     #[test]
     fn test_should_ignore_release() {
@@ -320,21 +374,38 @@ mod tests {
         assert!(engine.preedit.is_empty());
         assert!(!engine.aux_visible);
         assert_eq!(engine.mode, InputMode::Japanese);
+        assert!(engine.lookup_table.is_none());
     }
 
     #[tokio::test]
-    async fn test_property_activate_mode_toggles() {
+    async fn test_property_activate_mode_japanese() {
         let Some(handle) = create_test_handle().await else {
             return;
         };
         let mut engine = DemoEngine::new();
         assert_eq!(engine.mode, InputMode::Japanese);
 
-        engine.property_activate("mode", 0, &handle).await;
+        engine.property_activate("mode_japanese", 0, &handle).await;
+        assert_eq!(engine.mode, InputMode::Japanese);
+
+        engine.mode = InputMode::English;
+        engine.property_activate("mode_japanese", 0, &handle).await;
+        assert_eq!(engine.mode, InputMode::Japanese);
+    }
+
+    #[tokio::test]
+    async fn test_property_activate_mode_english() {
+        let Some(handle) = create_test_handle().await else {
+            return;
+        };
+        let mut engine = DemoEngine::new();
+        assert_eq!(engine.mode, InputMode::Japanese);
+
+        engine.property_activate("mode_english", 0, &handle).await;
         assert_eq!(engine.mode, InputMode::English);
 
-        engine.property_activate("mode", 0, &handle).await;
-        assert_eq!(engine.mode, InputMode::Japanese);
+        engine.property_activate("mode_english", 0, &handle).await;
+        assert_eq!(engine.mode, InputMode::English);
     }
 
     #[tokio::test]
@@ -366,7 +437,7 @@ mod tests {
         };
         let mut engine = DemoEngine::new();
         engine.preedit = "あいう".to_string();
-        engine.property_activate("mode", 0, &handle).await;
+        engine.property_activate("mode_english", 0, &handle).await;
         assert_eq!(engine.mode, InputMode::English);
         assert!(engine.preedit.is_empty());
     }
