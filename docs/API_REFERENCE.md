@@ -39,6 +39,9 @@ impl Bus {
     /// Access the underlying zbus Connection.
     pub fn connection(&self) -> Result<&zbus::Connection>;
 
+    /// Access the underlying `org.freedesktop.IBus` D-Bus proxy.
+    pub fn bus_proxy(&self) -> Result<IBusProxy<'static>>;
+
     /// Register a component and its engines with the daemon.
     pub async fn register_component(&self, component: &Component) -> Result<()>;
 
@@ -127,6 +130,10 @@ Used to notify the IBus panel or application of state updates.
 pub struct EngineHandle { /* private fields */ }
 
 impl EngineHandle {
+    /// Create a new EngineHandle from a D-Bus signal emitter.
+    /// Primarily used internally; exposed for unit-testing custom engines.
+    pub fn new(signal_ctxt: SignalEmitter<'static>) -> Self;
+
     /// Emit the CommitText signal to output final characters.
     pub async fn commit_text(&self, text: impl Into<crate::text::Text>) -> zbus::Result<()>;
 
@@ -292,6 +299,16 @@ impl Component {
     pub fn set_text_domain(&mut self, text_domain: &str) -> &mut Self;
     pub fn add_watch_path(&mut self, path: &str) -> &mut Self;
 }
+```
+
+#### Engine Rank Constants
+
+```rust
+pub const ENGINE_RANK_BEST: u32 = 0;
+pub const ENGINE_RANK_GOOD: u32 = 1;
+pub const ENGINE_RANK_NORMAL: u32 = 2;
+pub const ENGINE_RANK_BAD: u32 = 3;
+pub const ENGINE_RANK_WORST: u32 = 4;
 ```
 
 ### EngineDesc
@@ -552,6 +569,9 @@ impl Attr {
     pub fn underline(style: u32, start_index: u32, end_index: u32) -> Self;
     pub fn foreground(color: u32, start_index: u32, end_index: u32) -> Self;
     pub fn background(color: u32, start_index: u32, end_index: u32) -> Self;
+
+    /// Return the typed AttrType enum value for this attribute, or None if unknown.
+    pub fn attr_type(&self) -> Option<AttrType>;
 }
 
 pub struct AttrList {
@@ -681,7 +701,7 @@ impl ModifierType {
 }
 ```
 
-### Caps / Purpose / Hint
+### Caps / Purpose / InputHint
 
 Input context capability flags and content type constants.
 
@@ -712,7 +732,7 @@ pub enum Purpose {
 }
 
 bitflags! {
-    pub struct Hint: u32 {
+    pub struct InputHint: u32 {
         const NONE = 0;
         const NO_AUTO_CAPS = 1 << 0;
         const NO_AUTO_CORRECTION = 1 << 1;
@@ -741,11 +761,36 @@ pub trait FactoryImpl: Send {
 pub async fn register(conn: &Connection, impl_: Box<dyn FactoryImpl>) -> Result<()>;
 ```
 
+### Utility Functions
+
+Connection helper and XML generation.
+
+```rust
+/// Connect to the D-Bus session bus (shortcut for `zbus::Connection::session().await`).
+pub async fn connect_session() -> Result<zbus::Connection>;
+
+/// Generate the component XML string for ibus registration.
+pub fn component_to_xml(component: &Component) -> String;
+```
+
 ---
 
 ## 3. GVariant Serialization & `IBusSerializable`
 
-Core IBus structures (`Component`, `EngineDesc`, `Text`, `Attr`, `AttrList`, `LookupTable`, `Prop`, `PropList`) implement the custom serialization layer conforming to GLib's `GVariant` format and the IBus wire format (`IBusSerializable`).
+Custom serialization layer conforming to GLib's `GVariant` format and the IBus wire format.
+
+```rust
+pub trait IBusSerializable: Sized {
+    /// Class name corresponding to the C implementation (e.g. "IBusText").
+    fn class_name() -> &'static str;
+    /// Serialize the object into a GVariant Value.
+    fn to_value(&self) -> Value<'static>;
+    /// Deserialize the object from a GVariant Value.
+    fn from_value(value: &Value<'_>) -> Result<Self>;
+}
+```
+
+Core IBus structures (`Component`, `EngineDesc`, `Text`, `Attr`, `AttrList`, `LookupTable`, `Prop`, `PropList`) implement this trait to provide exact GVariant compatibility with the C `ibus-daemon`.
 
 * **Serialization Layout**: Structs are serialized as `(class_name, attachments, ...fields)` flat D-Bus structure tuples. For example, `Component` uses the exact signature `(sa{sv}ssssssssavav)`, carefully maintaining field order (`observed_paths` before `engines`), dynamically constructing internal structs (`IBusObservedPath`, `IBusEngineDesc`), and wrapping them in array variants (`av`) as strictly expected by the C implementation.
 * **EngineDesc**: Hotkeys are serialized as a semicolon-separated string matching the IBus protocol convention (e.g., `"Alt+space;Ctrl+Shift+F"`). Includes `icon_prop_key` field for dynamic panel icons. Rank is serialized as `uint32`.
