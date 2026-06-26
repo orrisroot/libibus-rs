@@ -2,7 +2,11 @@
 name = "demo-engine"
 version = "1.0.0"
 edition = "2024"
-description = "Demo IBus engine for libibus-rs"
+description = "Demo IBus engine for libibus-rs (Japanese/English input)"
+authors = ["Yoshihiro OKUMURA <orrisroot@gmail.com>"]
+license = "MIT"
+homepage = "https://github.com/orrisroot/libibus-rs"
+repository = "https://github.com/orrisroot/libibus-rs"
 publish = false
 
 [dependencies]

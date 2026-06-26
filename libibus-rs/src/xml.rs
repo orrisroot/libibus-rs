@@ -3,14 +3,6 @@ use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 
 use crate::component::{Component, EngineDesc};
 
-fn escape_xml(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-        .replace('\'', "&apos;")
-}
-
 /// Serialize an IBus component definition to XML.
 ///
 /// The output conforms to the IBus component XML format used by
@@ -58,8 +50,12 @@ pub fn component_to_xml(component: &Component) -> String {
         write_event(&mut writer, Event::End(BytesEnd::new("watch")));
     }
 
-    for engine in &component.engines {
-        engine_to_xml(&mut writer, engine);
+    if !component.engines.is_empty() {
+        write_event(&mut writer, Event::Start(BytesStart::new("engines")));
+        for engine in &component.engines {
+            engine_to_xml(&mut writer, engine);
+        }
+        write_event(&mut writer, Event::End(BytesEnd::new("engines")));
     }
 
     write_event(&mut writer, Event::End(BytesEnd::new("component")));
@@ -79,12 +75,16 @@ fn engine_to_xml(writer: &mut Writer<Vec<u8>>, engine: &EngineDesc) {
     if !engine.author.is_empty() {
         element(writer, "author", &engine.author);
     }
-    if !engine.icon.is_empty() {
-        element(writer, "icon", &engine.icon);
-    }
-    if !engine.layout.is_empty() && engine.layout != "us" {
-        element(writer, "layout", &engine.layout);
-    }
+    element(
+        writer,
+        "icon",
+        if engine.icon.is_empty() {
+            "ibus-keyboard"
+        } else {
+            &engine.icon
+        },
+    );
+    element(writer, "layout", &engine.layout);
     if !engine.hotkeys.is_empty() {
         element(writer, "hotkeys", &engine.hotkeys.join(";"));
     }
@@ -105,30 +105,25 @@ fn engine_to_xml(writer: &mut Writer<Vec<u8>>, engine: &EngineDesc) {
     if !engine.text_domain.is_empty() {
         element(writer, "textdomain", &engine.text_domain);
     }
+    if !engine.icon_prop_key.is_empty() {
+        element(writer, "icon_prop_key", &engine.icon_prop_key);
+    }
     write_event(writer, Event::End(BytesEnd::new("engine")));
 }
 
 fn element(writer: &mut Writer<Vec<u8>>, tag: &str, value: &str) {
-    let escaped = escape_xml(value);
     write_event(writer, Event::Start(BytesStart::new(tag)));
-    write_event(writer, Event::Text(BytesText::new(&escaped)));
+    write_event(writer, Event::Text(BytesText::new(value)));
     write_event(writer, Event::End(BytesEnd::new(tag)));
 }
 
 fn write_exec(writer: &mut Writer<Vec<u8>>, exec_path: &str, exec_args: &[String]) {
-    let mut elem = BytesStart::new("exec");
-    if !exec_path.is_empty() {
-        elem.push_attribute(("exec", escape_xml(exec_path).as_str()));
-    }
-    if !exec_args.is_empty() {
-        let args = exec_args
-            .iter()
-            .map(|a| escape_xml(a))
-            .collect::<Vec<_>>()
-            .join(" ");
-        elem.push_attribute(("args", args.as_str()));
-    }
-    write_event(writer, Event::Empty(elem));
+    let value = if exec_args.is_empty() {
+        exec_path.to_owned()
+    } else {
+        format!("{} {}", exec_path, exec_args.join(" "))
+    };
+    element(writer, "exec", &value);
 }
 
 fn write_event(writer: &mut Writer<Vec<u8>>, event: Event<'_>) {

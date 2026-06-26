@@ -42,3 +42,15 @@ pub use panel::Panel;
 pub use prop::{Prop, PropList, PropState, PropType};
 pub use text::Text;
 pub use xml::component_to_xml;
+
+/// Connect to the D-Bus session bus.
+///
+/// Use this connection to register your engine factory so the ibus-daemon can
+/// discover it via `NameOwnerChanged` on the session bus.
+///
+/// # Errors
+///
+/// Returns [`Error::Connection`] if the session bus cannot be reached.
+pub async fn connect_session() -> Result<zbus::Connection> {
+    conn::connect_session().await
+}

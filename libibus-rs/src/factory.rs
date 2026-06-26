@@ -1,3 +1,5 @@
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::sync::Mutex;
@@ -8,6 +10,16 @@ use zvariant::OwnedObjectPath;
 
 use crate::engine::{Engine, EngineHandle, EngineImpl};
 use crate::error::{Error, Result};
+
+fn factory_log(msg: &str) {
+    if let Ok(mut f) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/demo-engine.log")
+    {
+        let _ = writeln!(f, "[{}] [factory] {}", std::process::id(), msg);
+    }
+}
 
 const FACTORY_PATH: &str = "/org/freedesktop/IBus/Factory";
 
@@ -52,7 +64,7 @@ pub trait FactoryImpl: Send {
     }
 }
 
-pub(crate) struct Factory {
+pub struct Factory {
     inner: Arc<Mutex<Box<dyn FactoryImpl>>>,
     conn: Connection,
 }
@@ -84,7 +96,8 @@ pub async fn register(conn: &Connection, impl_: Box<dyn FactoryImpl>) -> Result<
 
 #[interface(name = "org.freedesktop.IBus.Factory")]
 impl Factory {
-    async fn create_engine(&mut self, engine_name: &str) -> zbus::fdo::Result<OwnedObjectPath> {
+    pub async fn create_engine(&mut self, engine_name: &str) -> zbus::fdo::Result<OwnedObjectPath> {
+        factory_log(&format!("create_engine called for: {}", engine_name));
         let engine_impl = {
             let mut inner = self.inner.lock().await;
             inner
@@ -120,7 +133,7 @@ impl Factory {
         Ok(object_path)
     }
 
-    async fn destroy_engine(&mut self, engine_name: &str) -> zbus::fdo::Result<()> {
+    pub async fn destroy_engine(&mut self, engine_name: &str) -> zbus::fdo::Result<()> {
         let mut inner = self.inner.lock().await;
         inner
             .destroy_engine(engine_name)

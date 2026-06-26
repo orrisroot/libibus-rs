@@ -161,7 +161,9 @@ fn test_component_xml_generation() {
     assert!(xml.starts_with("<?xml"));
     assert!(xml.contains("<component>"));
     assert!(xml.contains("<name>test-xml</name>"));
+    assert!(xml.contains("<engines>"));
     assert!(xml.contains("<engine>"));
+    assert!(xml.contains("</engines>"));
     assert!(xml.contains("<name>eng</name>"));
 }
 
